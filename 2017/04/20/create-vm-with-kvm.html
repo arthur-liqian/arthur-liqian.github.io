@@ -1,0 +1,182 @@
+<h1 id="使用kvm创建虚拟机">使用KVM创建虚拟机</h1>
+
+<h2 id="kvm简介">KVM简介</h2>
+
+<p>TBD</p>
+
+<h3 id="创建无网络的虚拟机">创建无网络的虚拟机</h3>
+
+<h4 id="使用条件">使用条件</h4>
+
+<p>使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># grep -E "vmx|svm" /proc/cpuinfo
+</code></pre>
+</div>
+
+<p>如果此命令的输出不为空，如多行如下输出：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch ida arat epb pln pts dtherm tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm cqm rdseed adx smap xsaveopt cqm_llc cqm_occup_llc
+</code></pre>
+</div>
+
+<p>说明CPU是支持KVM必需的虚拟化特性的。</p>
+
+<p>如果输出为空，则说明CPU不支持KVM的运行。</p>
+
+<h4 id="包安装">包安装</h4>
+
+<p>在RedHat或者CentOS下，使用yum安装必需的包：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># yum install -y qemu-kvm libvirt virt-install
+</code></pre>
+</div>
+
+<p>其中：</p>
+
+<ul>
+  <li>qemu-kvm是QEMU和KVM的组合，分别用来进行硬件模拟和系统虚拟化。</li>
+  <li>libvirt是一套标准的虚拟机系统的管理接口</li>
+  <li>virt-install是用来安装虚拟器的工具</li>
+</ul>
+
+<p>包安装完成后，需要激活并启动libvirtd服务：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>systemctl enable libvirtd &amp;&amp; systemctl start libvirtd
+</code></pre>
+</div>
+
+<p>接下来需要检查必要的内核模块：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>lsmod | grep "kvm"
+</code></pre>
+</div>
+
+<p>正常情况下，输出应当有kvm和kvm_intel或者kvm_amd，如:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>kvm_intel             162153  0
+kvm                   525259  1 kvm_intel
+</code></pre>
+</div>
+
+<p>如果内核模块没有加载，需要手动加载：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># modprobe kvm
+</code></pre>
+</div>
+
+<ul>
+  <li>
+    <p>对于Intel平台，还需要执行</p>
+
+    <div class="highlighter-rouge"><pre class="highlight"><code>  # modprobe kvm-intel
+</code></pre>
+    </div>
+  </li>
+  <li>
+    <p>对于AMD平台</p>
+
+    <div class="highlighter-rouge"><pre class="highlight"><code>  # modprobe kvm-amd
+</code></pre>
+    </div>
+  </li>
+</ul>
+
+<h4 id="导入现有系统镜像">导入现有系统镜像</h4>
+
+<p>使用<code class="highlighter-rouge">virt-install</code>可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作为虚拟机系统运行时的系
+统分区，用于继续保存系统的文件。</p>
+
+<p>接下来的例子中，会使用CirrOS镜像文件。CirrOS是一个精简的Linux内核系统，经常用在云平台的测试
+中。CirrOS镜像可以在
+<a href="http://download.cirros-cloud.net/">http://download.cirros-cloud.net/</a>
+下载到。比如
+<a href="http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-i386-disk.img">cirros-0.3.5-i386-disk.img</a>
+。</p>
+
+<p>我们可以使用<code class="highlighter-rouge">qemu-img</code>工具来查看和操作磁盘镜像文件。比如，使用以下命令来查看当前目录下的
+cirros-0.3.5-i386-disk.img 镜像文件信息：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># qemu-img info cirros-0.3.5-i386-disk.img
+
+image: cirros-0.3.5-i386-disk.img
+file format: qcow2
+virtual size: 39M (41126400 bytes)
+disk size: 12M
+cluster_size: 65536
+Format specific information:
+    compat: 0.10
+</code></pre>
+</div>
+
+<p>返回值中的file format字段是指磁盘镜像文件的格式，这里CirrOS的镜像格式是qcow2，也即QEMU的一
+种 copy-on-write 格式。对于镜像格式，这里不再展开。</p>
+
+<p>下载好磁盘镜像文件后，就可以进行虚拟机的安装了。</p>
+
+<p>一般来说，libvirt维护的虚拟机的磁盘镜像都保存在<code class="highlighter-rouge">/var/lib/libvirt/images/</code>目录下，所以这里
+我们首先将下载的镜像文件拷贝到这个目录下：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img
+</code></pre>
+</div>
+
+<p>然后，就可以通过导入磁盘镜像的方式来创建虚拟机了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># virt-install --name cirros-vm \
+        --ram 500 \
+        --disk path=/var/lib/libvirt/images/cirros-vm.img \
+        --accelerate \
+        --vnc \
+        --import \
+        --noautoconsole
+</code></pre>
+</div>
+
+<p>这里，各个参数的意义如下：</p>
+
+<ul>
+  <li><code class="highlighter-rouge">name</code> 虚拟机的名字。同一个宿主机上的虚拟机的名字必须是唯一的。</li>
+  <li><code class="highlighter-rouge">ram</code> 内存大小，单位为MB。这里，虚拟机的内存为500MB。</li>
+  <li><code class="highlighter-rouge">disk</code> 指定用于虚拟机系统磁盘。<code class="highlighter-rouge">path=/var/lib/libvirt/images/cirros-vm.img</code>表示，
+使用在路径为<code class="highlighter-rouge">/var/lib/libvirt/images/cirros-vm.img</code>的镜像。</li>
+  <li><code class="highlighter-rouge">accelerate</code> 激活KVM内核加速。</li>
+  <li><code class="highlighter-rouge">vnc</code> 激活虚拟机的VNC访问。</li>
+  <li><code class="highlighter-rouge">import</code> 表示当前是通过导入已有磁盘镜像上的系统来创建虚拟机，不需要指定系统安装源介质，比
+系统光盘镜像。</li>
+  <li><code class="highlighter-rouge">noautoconsole</code> 表示虚拟机的安装命令成功发出后，会结束当前命令，而不会自动连接到虚拟机
+控制台。</li>
+</ul>
+
+<p>执行完<code class="highlighter-rouge">virt-install</code>命令后，可以使用<code class="highlighter-rouge">virsh</code>命令对虚拟机进行管理操作。比如查看当前宿主机上的
+所有虚拟机：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+6     cirros-vm                      running
+-     cirros-1                       shut off
+</code></pre>
+</div>
+
+<p>参数<code class="highlighter-rouge">--all</code>表示显示所有的虚拟机，包括已关机的。如果不指定此参数，默认只显示运行中的虚拟机。</p>
+
+<p>上例中，宿主机上有两个虚拟机，运行中的cirros-vm和关机的cirros-1。只有运行中的虚拟机会显示Id。</p>
+
+<p>由于现在还没有配置好虚拟的网络和SSH服务，可以通<code class="highlighter-rouge">virsh console</code>来连接到虚拟机：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># virsh console cirros-vm
+Connected to domain cirros-vm
+Escape character is ^]
+
+login as 'cirros' user. default password: 'cubswin:)'. use 'sudo' for root.
+cirros login:
+</code></pre>
+</div>
+
+<p>以上输出中的第一行表示虚拟机的控制台已经成功连接上。第二行则是提示可以使用快捷键<code class="highlighter-rouge">ctrl+]</code>来退出
+控制台连接。</p>
+
+<p>很多时候，在连接上虚拟机控制台后，就算虚拟机操作系统已经可以访问，也不会显示登陆或者对话提示，这
+时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
+注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。</p>

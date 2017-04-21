@@ -1,5 +1,186 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-19T19:26:22+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
-</subtitle><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-21T13:36:09+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
+</subtitle><entry><title type="html">Create Vm With Kvm</title><link href="/2017/04/20/create-vm-with-kvm.html" rel="alternate" type="text/html" title="Create Vm With Kvm" /><published>2017-04-20T00:00:00+08:00</published><updated>2017-04-20T00:00:00+08:00</updated><id>/2017/04/20/create-vm-with-kvm</id><content type="html" xml:base="/2017/04/20/create-vm-with-kvm.html">&lt;h1 id=&quot;使用kvm创建虚拟机&quot;&gt;使用KVM创建虚拟机&lt;/h1&gt;
+
+&lt;h2 id=&quot;kvm简介&quot;&gt;KVM简介&lt;/h2&gt;
+
+&lt;p&gt;TBD&lt;/p&gt;
+
+&lt;h3 id=&quot;创建无网络的虚拟机&quot;&gt;创建无网络的虚拟机&lt;/h3&gt;
+
+&lt;h4 id=&quot;使用条件&quot;&gt;使用条件&lt;/h4&gt;
+
+&lt;p&gt;使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# grep -E &quot;vmx|svm&quot; /proc/cpuinfo
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;如果此命令的输出不为空，如多行如下输出：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch ida arat epb pln pts dtherm tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm cqm rdseed adx smap xsaveopt cqm_llc cqm_occup_llc
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;说明CPU是支持KVM必需的虚拟化特性的。&lt;/p&gt;
+
+&lt;p&gt;如果输出为空，则说明CPU不支持KVM的运行。&lt;/p&gt;
+
+&lt;h4 id=&quot;包安装&quot;&gt;包安装&lt;/h4&gt;
+
+&lt;p&gt;在RedHat或者CentOS下，使用yum安装必需的包：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# yum install -y qemu-kvm libvirt virt-install
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;其中：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;qemu-kvm是QEMU和KVM的组合，分别用来进行硬件模拟和系统虚拟化。&lt;/li&gt;
+  &lt;li&gt;libvirt是一套标准的虚拟机系统的管理接口&lt;/li&gt;
+  &lt;li&gt;virt-install是用来安装虚拟器的工具&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;包安装完成后，需要激活并启动libvirtd服务：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;systemctl enable libvirtd &amp;amp;&amp;amp; systemctl start libvirtd
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;接下来需要检查必要的内核模块：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;lsmod | grep &quot;kvm&quot;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;正常情况下，输出应当有kvm和kvm_intel或者kvm_amd，如:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;kvm_intel             162153  0
+kvm                   525259  1 kvm_intel
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;如果内核模块没有加载，需要手动加载：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# modprobe kvm
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;对于Intel平台，还需要执行&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # modprobe kvm-intel
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;对于AMD平台&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # modprobe kvm-amd
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;导入现有系统镜像&quot;&gt;导入现有系统镜像&lt;/h4&gt;
+
+&lt;p&gt;使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作为虚拟机系统运行时的系
+统分区，用于继续保存系统的文件。&lt;/p&gt;
+
+&lt;p&gt;接下来的例子中，会使用CirrOS镜像文件。CirrOS是一个精简的Linux内核系统，经常用在云平台的测试
+中。CirrOS镜像可以在
+&lt;a href=&quot;http://download.cirros-cloud.net/&quot;&gt;http://download.cirros-cloud.net/&lt;/a&gt;
+下载到。比如
+&lt;a href=&quot;http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-i386-disk.img&quot;&gt;cirros-0.3.5-i386-disk.img&lt;/a&gt;
+。&lt;/p&gt;
+
+&lt;p&gt;我们可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;qemu-img&lt;/code&gt;工具来查看和操作磁盘镜像文件。比如，使用以下命令来查看当前目录下的
+cirros-0.3.5-i386-disk.img 镜像文件信息：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# qemu-img info cirros-0.3.5-i386-disk.img
+
+image: cirros-0.3.5-i386-disk.img
+file format: qcow2
+virtual size: 39M (41126400 bytes)
+disk size: 12M
+cluster_size: 65536
+Format specific information:
+    compat: 0.10
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;返回值中的file format字段是指磁盘镜像文件的格式，这里CirrOS的镜像格式是qcow2，也即QEMU的一
+种 copy-on-write 格式。对于镜像格式，这里不再展开。&lt;/p&gt;
+
+&lt;p&gt;下载好磁盘镜像文件后，就可以进行虚拟机的安装了。&lt;/p&gt;
+
+&lt;p&gt;一般来说，libvirt维护的虚拟机的磁盘镜像都保存在&lt;code class=&quot;highlighter-rouge&quot;&gt;/var/lib/libvirt/images/&lt;/code&gt;目录下，所以这里
+我们首先将下载的镜像文件拷贝到这个目录下：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;然后，就可以通过导入磁盘镜像的方式来创建虚拟机了：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virt-install --name cirros-vm \
+        --ram 500 \
+        --disk path=/var/lib/libvirt/images/cirros-vm.img \
+        --accelerate \
+        --vnc \
+        --import \
+        --noautoconsole
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;这里，各个参数的意义如下：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;name&lt;/code&gt; 虚拟机的名字。同一个宿主机上的虚拟机的名字必须是唯一的。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ram&lt;/code&gt; 内存大小，单位为MB。这里，虚拟机的内存为500MB。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;disk&lt;/code&gt; 指定用于虚拟机系统磁盘。&lt;code class=&quot;highlighter-rouge&quot;&gt;path=/var/lib/libvirt/images/cirros-vm.img&lt;/code&gt;表示，
+使用在路径为&lt;code class=&quot;highlighter-rouge&quot;&gt;/var/lib/libvirt/images/cirros-vm.img&lt;/code&gt;的镜像。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;accelerate&lt;/code&gt; 激活KVM内核加速。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;vnc&lt;/code&gt; 激活虚拟机的VNC访问。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;import&lt;/code&gt; 表示当前是通过导入已有磁盘镜像上的系统来创建虚拟机，不需要指定系统安装源介质，比
+系统光盘镜像。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;noautoconsole&lt;/code&gt; 表示虚拟机的安装命令成功发出后，会结束当前命令，而不会自动连接到虚拟机
+控制台。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;执行完&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;命令后，可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh&lt;/code&gt;命令对虚拟机进行管理操作。比如查看当前宿主机上的
+所有虚拟机：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+6     cirros-vm                      running
+-     cirros-1                       shut off
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;参数&lt;code class=&quot;highlighter-rouge&quot;&gt;--all&lt;/code&gt;表示显示所有的虚拟机，包括已关机的。如果不指定此参数，默认只显示运行中的虚拟机。&lt;/p&gt;
+
+&lt;p&gt;上例中，宿主机上有两个虚拟机，运行中的cirros-vm和关机的cirros-1。只有运行中的虚拟机会显示Id。&lt;/p&gt;
+
+&lt;p&gt;由于现在还没有配置好虚拟的网络和SSH服务，可以通&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;来连接到虚拟机：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh console cirros-vm
+Connected to domain cirros-vm
+Escape character is ^]
+
+login as 'cirros' user. default password: 'cubswin:)'. use 'sudo' for root.
+cirros login:
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;以上输出中的第一行表示虚拟机的控制台已经成功连接上。第二行则是提示可以使用快捷键&lt;code class=&quot;highlighter-rouge&quot;&gt;ctrl+]&lt;/code&gt;来退出
+控制台连接。&lt;/p&gt;
+
+&lt;p&gt;很多时候，在连接上虚拟机控制台后，就算虚拟机操作系统已经可以访问，也不会显示登陆或者对话提示，这
+时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
+注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。&lt;/p&gt;</content><author><name></name></author><summary type="html">使用KVM创建虚拟机</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
 
 &lt;p&gt;To add new posts, simply add a file in the &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code class=&quot;highlighter-rouge&quot;&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
 
