@@ -9,7 +9,7 @@
 
 &lt;h4 id=&quot;使用条件&quot;&gt;使用条件&lt;/h4&gt;
 
-&lt;p&gt;使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：&lt;/p&gt;
+&lt;p&gt;使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：&lt;/p&gt; 
 
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# grep -E &quot;vmx|svm&quot; /proc/cpuinfo
 &lt;/code&gt;&lt;/pre&gt;
