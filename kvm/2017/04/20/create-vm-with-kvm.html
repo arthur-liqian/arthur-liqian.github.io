@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>使用KVM创建虚拟机</title>
-  <meta name="description" content="使用KVM创建虚拟机">
+  <meta name="description" content="KVM简介">
 
   <link rel="stylesheet" href="/assets/main.css">
   <link rel="canonical" href="/kvm/2017/04/20/create-vm-with-kvm.html">
@@ -77,15 +77,13 @@
   </header>
 
   <div class="post-content" itemprop="articleBody">
-    <h1 id="使用kvm创建虚拟机">使用KVM创建虚拟机</h1>
-
-<h2 id="kvm简介">KVM简介</h2>
+    <h1 id="kvm简介">KVM简介</h1>
 
 <p>TBD</p>
 
-<h3 id="创建无网络的虚拟机">创建无网络的虚拟机</h3>
+<h2 id="创建无网络的虚拟机">创建无网络的虚拟机</h2>
 
-<h4 id="使用条件">使用条件</h4>
+<h3 id="使用条件">使用条件</h3>
 
 <p>使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：</p>
 
@@ -103,7 +101,7 @@
 
 <p>如果输出为空，则说明CPU不支持KVM的运行。</p>
 
-<h4 id="包安装">包安装</h4>
+<h3 id="包安装">包安装</h3>
 
 <p>在RedHat或者CentOS下，使用yum安装必需的包：</p>
 
@@ -161,10 +159,10 @@ kvm                   525259  1 kvm_intel
   </li>
 </ul>
 
-<h4 id="导入现有系统镜像">导入现有系统镜像</h4>
+<h3 id="导入现有磁盘镜像">导入现有磁盘镜像</h3>
 
-<p>使用<code class="highlighter-rouge">virt-install</code>可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作为虚拟机系统运行时的系
-统分区，用于继续保存系统的文件。</p>
+<p>使用<code class="highlighter-rouge">virt-install</code>可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作
+为虚拟机系统运行时的系统分区，用于继续保存系统的文件。</p>
 
 <p>接下来的例子中，会使用CirrOS镜像文件。CirrOS是一个精简的Linux内核系统，经常用在云平台的测试
 中。CirrOS镜像可以在
@@ -259,6 +257,111 @@ cirros login:
 <p>很多时候，在连接上虚拟机控制台后，就算虚拟机操作系统已经可以访问，也不会显示登陆或者对话提示，这
 时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
 注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。</p>
+
+<h3 id="使用光盘镜像安装新系统">使用光盘镜像安装新系统</h3>
+
+<p>除了导入一个已有的磁盘镜像，还可以通过系统安装光盘镜像来安装一个新的虚拟机。</p>
+
+<p>首先，我们需要准备系统安装光盘的镜像文件。比如，可以在
+<a href="https://www.centos.org/download/">https://www.centos.org/download/</a>
+找到所需的CentOS安装镜像。接下来的例子中，会使用
+<a href="http://mirrors.sohu.com/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1611.iso">CentOS-7-x86_64-Minimal-1611.iso</a>。
+KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像文件放到qemu账号有权限访问的目录下，比
+如：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># mv CentOS-7-x86_64-Minimal-1611.iso /tmp/
+</code></pre>
+</div>
+
+<p>然后就可以执行以下命令开始虚拟机安装了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># virt-install --name centos7 \
+    --ram=1024 \
+    --vcpus=2 \
+    --disk path=/var/lib/libvirt/images/centos7.img,size=10,bus=virtio,format=qcow2 \
+    --accelerate \
+    --vnc --vncport=6001 --vnclisten=0.0.0.0 \
+    --noautoconsole \
+    --cdrom=/tmp/CentOS-7-x86_64-Minimal-1611.iso
+</code></pre>
+</div>
+
+<p>这个命令比之前多了一些参数：</p>
+
+<ul>
+  <li><code class="highlighter-rouge">vcpus</code> 虚拟机的虚拟CPU内核数量。</li>
+  <li><code class="highlighter-rouge">disk</code> 参数中，除了<code class="highlighter-rouge">path</code>以外，还多了<code class="highlighter-rouge">size</code>, <code class="highlighter-rouge">bus</code>和 <code class="highlighter-rouge">format</code>部分。<code class="highlighter-rouge">size</code>是虚拟机系统
+  磁盘大小，单位为”GB”。<code class="highlighter-rouge">bus</code>是磁盘驱动类型，一般为”virtio“。<code class="highlighter-rouge">format</code>是指磁盘镜像文件的
+  格式，这里同样是”qcow2”。在这个例子中，指定的磁盘镜像文件并不存在，KVM会根据参数自动创建
+  一个新的文件。</li>
+  <li><code class="highlighter-rouge">vnc</code> 参数后面多了两个与VNC相关的参数，<code class="highlighter-rouge">vncport</code>和<code class="highlighter-rouge">vnclisten</code>。<code class="highlighter-rouge">vncport</code>指定此虚拟机的
+  VNC服务在当前宿主机上的监听端口。<code class="highlighter-rouge">vnclisten</code>这里指定的”0.0.0.0”则指虚拟机的VNC服务在宿
+  主机上监听所有IP地址。后面会详细讲解如何根据这两个参数来连接虚拟机的VNC。</li>
+  <li><code class="highlighter-rouge">cdrom</code> 指定操作系统安装光盘镜像文件的地址。</li>
+</ul>
+
+<p>由于CentOS默认情况下不会开启TTY，所以此时还不能通过<code class="highlighter-rouge">virsh console</code>命令来连接虚拟机，而需要
+使用VNC客户端。接下来会用Chrome浏览器的VNC Viewer插件来演示。VNC Viewer插件可以在Chrome浏
+览器的插件市场里找到（需要翻墙）。</p>
+
+<p>根据上例中的VNC相关参数，可以知道新虚拟机的VNC服务是在宿主机的所有IP地址上监听6001端口。如所
+使用的宿主机IP地址为10.0.12.26，那么我们在VNC Viewer上指定VNC指定地址就是10.0.12.16:6001
+, 如下图所示：</p>
+
+<p><img src="/assets/img/vnc_connection.png" alt="VNC Viewer连接" /></p>
+
+<p>由于没有使用安全链接，在上面的登录窗口点击“Connect”后，如果虚拟机的VNC可以正常访问，会有连接
+未加密的警告提示：</p>
+
+<p><img src="/assets/img/vnc_connection_warning.png" alt="VNC View连接加密警告" /></p>
+
+<p>忽略此警告，点击警告窗口上的”Connect”后，就可以看到CentOS的安装窗口了：</p>
+
+<p><img src="/assets/img/vnc_centos_install.png" alt="VNC Viewer安装CentOS窗口" /></p>
+
+<p>接下来就可以安装一般安装CentOS的方式进行后续的安装操作了。</p>
+
+<p>系统安装最后安装程序会尝试自动重启，此时有可能虚拟机关机后不会自动启动，需要我们手动启动。</p>
+
+<p>首先，我们可以通过<code class="highlighter-rouge">virsh list --all</code>命令查看虚拟机状态，如果发现的确虚拟机状态为<code class="highlighter-rouge">shut down</code>
+就可以使用<code class="highlighter-rouge">virsh start</code>命令来手动启动：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># virsh start centos7
+</code></pre>
+</div>
+
+<p>命令中的参数<code class="highlighter-rouge">centos7</code>是我们安装虚拟机时指定的虚拟机名字。</p>
+
+<p>默认情况下，CentOS是不开启ttyS0的，我们需要手动配置和启用，否则无法通过<code class="highlighter-rouge">virsh console</code>命令
+来访问。</p>
+
+<p>首先，修改配置文件<code class="highlighter-rouge">/etc/sysconfig/grub</code>，在<code class="highlighter-rouge">GRUB_CMD_LINELINUX</code>中添加
+<code class="highlighter-rouge">console=ttyS0</code>, 如：</p>
+
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6</pre></td><td class="code"><pre><span class="nv">GRUB_TIMEOUT</span><span class="o">=</span>5
+<span class="nv">GRUB_DEFAULT</span><span class="o">=</span>saved
+<span class="nv">GRUB_DISABLE_SUBMENU</span><span class="o">=</span><span class="nb">true
+</span><span class="nv">GRUB_TERMINAL_OUTPUT</span><span class="o">=</span><span class="s2">"console"</span>
+<span class="nv">GRUB_CMDLINE_LINUX</span><span class="o">=</span><span class="s2">"rd.lvm.lv=centos/root rd.lvm.lv=centos/swap crashkernel=auto rhgb quiet console=ttyS0"</span>
+<span class="nv">GRUB_DISABLE_RECOVERY</span><span class="o">=</span><span class="s2">"true"</span><span class="w">
+</span></pre></td></tr></tbody></table></code></pre></figure>
+
+<p>中的第5行最后部分。</p>
+
+<p>接下来执行以下命令来设置并启用ttyS0：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code># stty -F /dev/ttyS0 speed 9600
+# grub2-mkconfig -o /boot/grub2/grub.cfg
+# systemctl start serial-getty@ttyS0
+</code></pre>
+</div>
+
+<p>这样，就可以通过<code class="highlighter-rouge">virsh console</code>来连接虚拟机了。</p>
 
   </div>
 

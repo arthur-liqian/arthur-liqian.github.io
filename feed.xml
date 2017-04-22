@@ -1,13 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-21T14:05:36+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
-</subtitle><entry><title type="html">使用KVM创建虚拟机</title><link href="/kvm/2017/04/20/create-vm-with-kvm.html" rel="alternate" type="text/html" title="使用KVM创建虚拟机" /><published>2017-04-20T22:55:36+08:00</published><updated>2017-04-20T22:55:36+08:00</updated><id>/kvm/2017/04/20/create-vm-with-kvm</id><content type="html" xml:base="/kvm/2017/04/20/create-vm-with-kvm.html">&lt;h1 id=&quot;使用kvm创建虚拟机&quot;&gt;使用KVM创建虚拟机&lt;/h1&gt;
-
-&lt;h2 id=&quot;kvm简介&quot;&gt;KVM简介&lt;/h2&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-22T16:56:14+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
+</subtitle><entry><title type="html">使用KVM创建虚拟机</title><link href="/kvm/2017/04/20/create-vm-with-kvm.html" rel="alternate" type="text/html" title="使用KVM创建虚拟机" /><published>2017-04-20T22:55:36+08:00</published><updated>2017-04-20T22:55:36+08:00</updated><id>/kvm/2017/04/20/create-vm-with-kvm</id><content type="html" xml:base="/kvm/2017/04/20/create-vm-with-kvm.html">&lt;h1 id=&quot;kvm简介&quot;&gt;KVM简介&lt;/h1&gt;
 
 &lt;p&gt;TBD&lt;/p&gt;
 
-&lt;h3 id=&quot;创建无网络的虚拟机&quot;&gt;创建无网络的虚拟机&lt;/h3&gt;
+&lt;h2 id=&quot;创建无网络的虚拟机&quot;&gt;创建无网络的虚拟机&lt;/h2&gt;
 
-&lt;h4 id=&quot;使用条件&quot;&gt;使用条件&lt;/h4&gt;
+&lt;h3 id=&quot;使用条件&quot;&gt;使用条件&lt;/h3&gt;
 
 &lt;p&gt;使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：&lt;/p&gt;
 
@@ -25,7 +23,7 @@
 
 &lt;p&gt;如果输出为空，则说明CPU不支持KVM的运行。&lt;/p&gt;
 
-&lt;h4 id=&quot;包安装&quot;&gt;包安装&lt;/h4&gt;
+&lt;h3 id=&quot;包安装&quot;&gt;包安装&lt;/h3&gt;
 
 &lt;p&gt;在RedHat或者CentOS下，使用yum安装必需的包：&lt;/p&gt;
 
@@ -83,10 +81,10 @@ kvm                   525259  1 kvm_intel
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&quot;导入现有系统镜像&quot;&gt;导入现有系统镜像&lt;/h4&gt;
+&lt;h3 id=&quot;导入现有磁盘镜像&quot;&gt;导入现有磁盘镜像&lt;/h3&gt;
 
-&lt;p&gt;使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作为虚拟机系统运行时的系
-统分区，用于继续保存系统的文件。&lt;/p&gt;
+&lt;p&gt;使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作
+为虚拟机系统运行时的系统分区，用于继续保存系统的文件。&lt;/p&gt;
 
 &lt;p&gt;接下来的例子中，会使用CirrOS镜像文件。CirrOS是一个精简的Linux内核系统，经常用在云平台的测试
 中。CirrOS镜像可以在
@@ -180,7 +178,112 @@ cirros login:
 
 &lt;p&gt;很多时候，在连接上虚拟机控制台后，就算虚拟机操作系统已经可以访问，也不会显示登陆或者对话提示，这
 时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
-注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。&lt;/p&gt;</content><author><name></name></author><summary type="html">使用KVM创建虚拟机</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。&lt;/p&gt;
+
+&lt;h3 id=&quot;使用光盘镜像安装新系统&quot;&gt;使用光盘镜像安装新系统&lt;/h3&gt;
+
+&lt;p&gt;除了导入一个已有的磁盘镜像，还可以通过系统安装光盘镜像来安装一个新的虚拟机。&lt;/p&gt;
+
+&lt;p&gt;首先，我们需要准备系统安装光盘的镜像文件。比如，可以在
+&lt;a href=&quot;https://www.centos.org/download/&quot;&gt;https://www.centos.org/download/&lt;/a&gt;
+找到所需的CentOS安装镜像。接下来的例子中，会使用
+&lt;a href=&quot;http://mirrors.sohu.com/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1611.iso&quot;&gt;CentOS-7-x86_64-Minimal-1611.iso&lt;/a&gt;。
+KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像文件放到qemu账号有权限访问的目录下，比
+如：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# mv CentOS-7-x86_64-Minimal-1611.iso /tmp/
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;然后就可以执行以下命令开始虚拟机安装了：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virt-install --name centos7 \
+    --ram=1024 \
+    --vcpus=2 \
+    --disk path=/var/lib/libvirt/images/centos7.img,size=10,bus=virtio,format=qcow2 \
+    --accelerate \
+    --vnc --vncport=6001 --vnclisten=0.0.0.0 \
+    --noautoconsole \
+    --cdrom=/tmp/CentOS-7-x86_64-Minimal-1611.iso
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;这个命令比之前多了一些参数：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;vcpus&lt;/code&gt; 虚拟机的虚拟CPU内核数量。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;disk&lt;/code&gt; 参数中，除了&lt;code class=&quot;highlighter-rouge&quot;&gt;path&lt;/code&gt;以外，还多了&lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;bus&lt;/code&gt;和 &lt;code class=&quot;highlighter-rouge&quot;&gt;format&lt;/code&gt;部分。&lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt;是虚拟机系统
+  磁盘大小，单位为”GB”。&lt;code class=&quot;highlighter-rouge&quot;&gt;bus&lt;/code&gt;是磁盘驱动类型，一般为”virtio“。&lt;code class=&quot;highlighter-rouge&quot;&gt;format&lt;/code&gt;是指磁盘镜像文件的
+  格式，这里同样是”qcow2”。在这个例子中，指定的磁盘镜像文件并不存在，KVM会根据参数自动创建
+  一个新的文件。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;vnc&lt;/code&gt; 参数后面多了两个与VNC相关的参数，&lt;code class=&quot;highlighter-rouge&quot;&gt;vncport&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;vnclisten&lt;/code&gt;。&lt;code class=&quot;highlighter-rouge&quot;&gt;vncport&lt;/code&gt;指定此虚拟机的
+  VNC服务在当前宿主机上的监听端口。&lt;code class=&quot;highlighter-rouge&quot;&gt;vnclisten&lt;/code&gt;这里指定的”0.0.0.0”则指虚拟机的VNC服务在宿
+  主机上监听所有IP地址。后面会详细讲解如何根据这两个参数来连接虚拟机的VNC。&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;cdrom&lt;/code&gt; 指定操作系统安装光盘镜像文件的地址。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;由于CentOS默认情况下不会开启TTY，所以此时还不能通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;命令来连接虚拟机，而需要
+使用VNC客户端。接下来会用Chrome浏览器的VNC Viewer插件来演示。VNC Viewer插件可以在Chrome浏
+览器的插件市场里找到（需要翻墙）。&lt;/p&gt;
+
+&lt;p&gt;根据上例中的VNC相关参数，可以知道新虚拟机的VNC服务是在宿主机的所有IP地址上监听6001端口。如所
+使用的宿主机IP地址为10.0.12.26，那么我们在VNC Viewer上指定VNC指定地址就是10.0.12.16:6001
+, 如下图所示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/vnc_connection.png&quot; alt=&quot;VNC Viewer连接&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由于没有使用安全链接，在上面的登录窗口点击“Connect”后，如果虚拟机的VNC可以正常访问，会有连接
+未加密的警告提示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/vnc_connection_warning.png&quot; alt=&quot;VNC View连接加密警告&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;忽略此警告，点击警告窗口上的”Connect”后，就可以看到CentOS的安装窗口了：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/vnc_centos_install.png&quot; alt=&quot;VNC Viewer安装CentOS窗口&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下来就可以安装一般安装CentOS的方式进行后续的安装操作了。&lt;/p&gt;
+
+&lt;p&gt;系统安装最后安装程序会尝试自动重启，此时有可能虚拟机关机后不会自动启动，需要我们手动启动。&lt;/p&gt;
+
+&lt;p&gt;首先，我们可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh list --all&lt;/code&gt;命令查看虚拟机状态，如果发现的确虚拟机状态为&lt;code class=&quot;highlighter-rouge&quot;&gt;shut down&lt;/code&gt;
+就可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh start&lt;/code&gt;命令来手动启动：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh start centos7
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;命令中的参数&lt;code class=&quot;highlighter-rouge&quot;&gt;centos7&lt;/code&gt;是我们安装虚拟机时指定的虚拟机名字。&lt;/p&gt;
+
+&lt;p&gt;默认情况下，CentOS是不开启ttyS0的，我们需要手动配置和启用，否则无法通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;命令
+来访问。&lt;/p&gt;
+
+&lt;p&gt;首先，修改配置文件&lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/sysconfig/grub&lt;/code&gt;，在&lt;code class=&quot;highlighter-rouge&quot;&gt;GRUB_CMD_LINELINUX&lt;/code&gt;中添加
+&lt;code class=&quot;highlighter-rouge&quot;&gt;console=ttyS0&lt;/code&gt;, 如：&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;&lt;table style=&quot;border-spacing: 0&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;gutter gl&quot; style=&quot;text-align: right&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;nv&quot;&gt;GRUB_TIMEOUT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;5
+&lt;span class=&quot;nv&quot;&gt;GRUB_DEFAULT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;saved
+&lt;span class=&quot;nv&quot;&gt;GRUB_DISABLE_SUBMENU&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;true
+&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;GRUB_TERMINAL_OUTPUT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;console&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;GRUB_CMDLINE_LINUX&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;rd.lvm.lv=centos/root rd.lvm.lv=centos/swap crashkernel=auto rhgb quiet console=ttyS0&quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;GRUB_DISABLE_RECOVERY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;true&quot;&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;中的第5行最后部分。&lt;/p&gt;
+
+&lt;p&gt;接下来执行以下命令来设置并启用ttyS0：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# stty -F /dev/ttyS0 speed 9600
+# grub2-mkconfig -o /boot/grub2/grub.cfg
+# systemctl start serial-getty@ttyS0
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;这样，就可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;来连接虚拟机了。&lt;/p&gt;</content><author><name></name></author><summary type="html">KVM简介</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
 
 &lt;p&gt;To add new posts, simply add a file in the &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code class=&quot;highlighter-rouge&quot;&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
 
