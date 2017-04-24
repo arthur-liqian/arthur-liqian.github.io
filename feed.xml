@@ -1,17 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-22T16:56:14+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
-</subtitle><entry><title type="html">使用KVM创建虚拟机</title><link href="/kvm/2017/04/20/create-vm-with-kvm.html" rel="alternate" type="text/html" title="使用KVM创建虚拟机" /><published>2017-04-20T22:55:36+08:00</published><updated>2017-04-20T22:55:36+08:00</updated><id>/kvm/2017/04/20/create-vm-with-kvm</id><content type="html" xml:base="/kvm/2017/04/20/create-vm-with-kvm.html">&lt;h1 id=&quot;kvm简介&quot;&gt;KVM简介&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-24T16:18:13+08:00</updated><id>/</id><title type="html">李芊的笔记本</title><subtitle>还没想好
+</subtitle><entry><title type="html">KVM快速入门</title><link href="/kvm/2017/04/20/kvm-quick-start.html" rel="alternate" type="text/html" title="KVM快速入门" /><published>2017-04-20T22:55:36+08:00</published><updated>2017-04-20T22:55:36+08:00</updated><id>/kvm/2017/04/20/kvm-quick-start</id><content type="html" xml:base="/kvm/2017/04/20/kvm-quick-start.html">&lt;h1 id=&quot;概览&quot;&gt;概览&lt;/h1&gt;
 
-&lt;p&gt;TBD&lt;/p&gt;
+&lt;h2 id=&quot;虚拟化virtualization和模拟emulation&quot;&gt;虚拟化(Virtualization)和模拟(Emulation)&lt;/h2&gt;
 
-&lt;h2 id=&quot;创建无网络的虚拟机&quot;&gt;创建无网络的虚拟机&lt;/h2&gt;
+&lt;p&gt;使用虚拟机以及其他虚拟资源的时候，经常会遇到的两个概念是虚拟化(Virtualization)和系统模拟
+(Emulation)。这两个概念有很多相似的地方，同时又紧密相联。&lt;/p&gt;
 
-&lt;h3 id=&quot;使用条件&quot;&gt;使用条件&lt;/h3&gt;
+&lt;p&gt;其中，系统模拟是指在系统A上模拟系统B的行为，使得原本只能在系统B上运行的软件也可以在系统A上运行。
+比如，在x86架构的系统上，模拟PowerPC架构，来运行PowerPC的原生软件。&lt;/p&gt;
+
+&lt;p&gt;而虚拟化(Virtualization)则是指在一套(硬件)系统上，模拟出多套相互之间独立的虚拟系统出来，供不
+同的用户使用，以此来提高计算资源的使用率。比如，将一台物理服务器划分为三个虚拟服务器，分别作为
+Web服务器、应用服务器和数据库服务器。&lt;/p&gt;
+
+&lt;p&gt;由于通常情况下，虚拟机的系统和宿主机系统很可能是异构的，所以虚拟化技术和系统模拟经常是同时使用
+的。&lt;/p&gt;
+
+&lt;h2 id=&quot;kvm和qemu&quot;&gt;KVM和QEMU&lt;/h2&gt;
+
+&lt;p&gt;KVM(Kernerl-based Virtual Machine)就是一种基于Linux内核的虚拟化技术。KVM本身不提供任何
+模拟功能，所以KVM经常和系统模拟工具QEMU搭配使用，共同提供一个完整的虚拟化环境。&lt;/p&gt;
+
+&lt;p&gt;接下来，会通过实例来演示在CentOS/RHEL宿主机上，如何使用KVM/QEMU来快速的安装虚拟机。本文不包
+虚拟网格的配置内容，所以的虚拟机都使用默认生成的虚拟网络和虚拟网络设备。虚拟机可以访问宿主机以外
+的网络，从宿主机上也可以通过网络访问虚拟机，但从外部网络无法访问到虚拟机。&lt;/p&gt;
+
+&lt;h2 id=&quot;libvirt&quot;&gt;libvirt&lt;/h2&gt;
+
+&lt;p&gt;libvirt是一个虚拟平台的管理工具，可以用来管理KVM、Xen等工具。在下面的示例中，libvirt的相关
+工具会用来对KVM进行操作。&lt;/p&gt;
+
+&lt;h1 id=&quot;环境准备&quot;&gt;环境准备&lt;/h1&gt;
+
+&lt;h2 id=&quot;环境条件&quot;&gt;环境条件&lt;/h2&gt;
 
 &lt;p&gt;使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# grep -E &quot;vmx|svm&quot; /proc/cpuinfo
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;grep -E &lt;span class=&quot;s2&quot;&gt;&quot;vmx|svm&quot;&lt;/span&gt; /proc/cpuinfo&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;如果此命令的输出不为空，如多行如下输出：&lt;/p&gt;
 
@@ -23,13 +48,11 @@
 
 &lt;p&gt;如果输出为空，则说明CPU不支持KVM的运行。&lt;/p&gt;
 
-&lt;h3 id=&quot;包安装&quot;&gt;包安装&lt;/h3&gt;
+&lt;h2 id=&quot;服务安装配置和启用&quot;&gt;服务安装、配置和启用&lt;/h2&gt;
 
 &lt;p&gt;在RedHat或者CentOS下，使用yum安装必需的包：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# yum install -y qemu-kvm libvirt virt-install
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;yum install -y qemu-kvm libvirt virt-install&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;其中：&lt;/p&gt;
 
@@ -41,47 +64,42 @@
 
 &lt;p&gt;包安装完成后，需要激活并启动libvirtd服务：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;systemctl enable libvirtd &amp;amp;&amp;amp; systemctl start libvirtd
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;systemctl &lt;span class=&quot;nb&quot;&gt;enable &lt;/span&gt;libvirtd &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; systemctl start libvirtd&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;接下来需要检查必要的内核模块：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;lsmod | grep &quot;kvm&quot;
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;lsmod | grep &lt;span class=&quot;s2&quot;&gt;&quot;kvm&quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;正常情况下，输出应当有kvm和kvm_intel或者kvm_amd，如:&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;kvm_intel             162153  0
-kvm                   525259  1 kvm_intel
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;kvm_intel             162153  0
+kvm                   525259  1 kvm_intel&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;如果内核模块没有加载，需要手动加载：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# modprobe kvm
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;modprobe kvm&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;
-    &lt;p&gt;对于Intel平台，还需要执行&lt;/p&gt;
-
-    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # modprobe kvm-intel
-&lt;/code&gt;&lt;/pre&gt;
-    &lt;/div&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;对于AMD平台&lt;/p&gt;
-
-    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # modprobe kvm-amd
-&lt;/code&gt;&lt;/pre&gt;
-    &lt;/div&gt;
-  &lt;/li&gt;
+  &lt;li&gt;对于Intel平台，还需要执行&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;导入现有磁盘镜像&quot;&gt;导入现有磁盘镜像&lt;/h3&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt; 
+    modprobe kvm-intel
+    &lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;对于AMD平台&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;    modprobe kvm-amd
+    &lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;h1 id=&quot;虚拟机安装&quot;&gt;虚拟机安装&lt;/h1&gt;
+
+&lt;p&gt;接下来会演示两种安装虚拟机的方式。一种是导入已有系统的系统镜像文件，这种方式经常用于将一个现有的
+系统迁移到新环境，或者将备份的系统还原。另一种是使用系统安装光盘镜像重新安装一个全新的虚拟机。&lt;/p&gt;
+
+&lt;h2 id=&quot;导入现有磁盘镜像&quot;&gt;导入现有磁盘镜像&lt;/h2&gt;
 
 &lt;p&gt;使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作
 为虚拟机系统运行时的系统分区，用于继续保存系统的文件。&lt;/p&gt;
@@ -96,17 +114,15 @@ kvm                   525259  1 kvm_intel
 &lt;p&gt;我们可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;qemu-img&lt;/code&gt;工具来查看和操作磁盘镜像文件。比如，使用以下命令来查看当前目录下的
 cirros-0.3.5-i386-disk.img 镜像文件信息：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# qemu-img info cirros-0.3.5-i386-disk.img
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;qemu-img info cirros-0.3.5-i386-disk.img
 
 image: cirros-0.3.5-i386-disk.img
 file format: qcow2
-virtual size: 39M (41126400 bytes)
+virtual size: 39M &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;41126400 bytes&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
 disk size: 12M
 cluster_size: 65536
 Format specific information:
-    compat: 0.10
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+    compat: 0.10&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;返回值中的file format字段是指磁盘镜像文件的格式，这里CirrOS的镜像格式是qcow2，也即QEMU的一
 种 copy-on-write 格式。对于镜像格式，这里不再展开。&lt;/p&gt;
@@ -116,21 +132,17 @@ Format specific information:
 &lt;p&gt;一般来说，libvirt维护的虚拟机的磁盘镜像都保存在&lt;code class=&quot;highlighter-rouge&quot;&gt;/var/lib/libvirt/images/&lt;/code&gt;目录下，所以这里
 我们首先将下载的镜像文件拷贝到这个目录下：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;然后，就可以通过导入磁盘镜像的方式来创建虚拟机了：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virt-install --name cirros-vm \
-        --ram 500 \
-        --disk path=/var/lib/libvirt/images/cirros-vm.img \
-        --accelerate \
-        --vnc \
-        --import \
-        --noautoconsole
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;virt-install --name cirros-vm &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --ram 500 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --disk &lt;span class=&quot;nv&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/lib/libvirt/images/cirros-vm.img &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --accelerate &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --vnc &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --import &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --noautoconsole&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;这里，各个参数的意义如下：&lt;/p&gt;
 
@@ -150,13 +162,11 @@ Format specific information:
 &lt;p&gt;执行完&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;命令后，可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh&lt;/code&gt;命令对虚拟机进行管理操作。比如查看当前宿主机上的
 所有虚拟机：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh list --all
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;virsh list --all
  Id    Name                           State
 ----------------------------------------------------
 6     cirros-vm                      running
--     cirros-1                       shut off
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+-     cirros-1                       shut off&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;参数&lt;code class=&quot;highlighter-rouge&quot;&gt;--all&lt;/code&gt;表示显示所有的虚拟机，包括已关机的。如果不指定此参数，默认只显示运行中的虚拟机。&lt;/p&gt;
 
@@ -164,14 +174,12 @@ Format specific information:
 
 &lt;p&gt;由于现在还没有配置好虚拟的网络和SSH服务，可以通&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;来连接到虚拟机：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh console cirros-vm
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;&lt;span class=&quot;c&quot;&gt;# virsh console cirros-vm&lt;/span&gt;
 Connected to domain cirros-vm
 Escape character is ^]
 
-login as 'cirros' user. default password: 'cubswin:)'. use 'sudo' for root.
-cirros login:
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+login as &lt;span class=&quot;s1&quot;&gt;'cirros'&lt;/span&gt; user. default password: &lt;span class=&quot;s1&quot;&gt;'cubswin:)'&lt;/span&gt;. use &lt;span class=&quot;s1&quot;&gt;'sudo'&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;root.
+cirros login:&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;以上输出中的第一行表示虚拟机的控制台已经成功连接上。第二行则是提示可以使用快捷键&lt;code class=&quot;highlighter-rouge&quot;&gt;ctrl+]&lt;/code&gt;来退出
 控制台连接。&lt;/p&gt;
@@ -180,7 +188,7 @@ cirros login:
 时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
 注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。&lt;/p&gt;
 
-&lt;h3 id=&quot;使用光盘镜像安装新系统&quot;&gt;使用光盘镜像安装新系统&lt;/h3&gt;
+&lt;h2 id=&quot;使用光盘镜像安装新系统&quot;&gt;使用光盘镜像安装新系统&lt;/h2&gt;
 
 &lt;p&gt;除了导入一个已有的磁盘镜像，还可以通过系统安装光盘镜像来安装一个新的虚拟机。&lt;/p&gt;
 
@@ -191,22 +199,18 @@ cirros login:
 KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像文件放到qemu账号有权限访问的目录下，比
 如：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# mv CentOS-7-x86_64-Minimal-1611.iso /tmp/
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;mv CentOS-7-x86_64-Minimal-1611.iso /tmp/&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;然后就可以执行以下命令开始虚拟机安装了：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virt-install --name centos7 \
-    --ram=1024 \
-    --vcpus=2 \
-    --disk path=/var/lib/libvirt/images/centos7.img,size=10,bus=virtio,format=qcow2 \
-    --accelerate \
-    --vnc --vncport=6001 --vnclisten=0.0.0.0 \
-    --noautoconsole \
-    --cdrom=/tmp/CentOS-7-x86_64-Minimal-1611.iso
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;virt-install --name centos7 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --ram&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1024 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --vcpus&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;2 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --disk &lt;span class=&quot;nv&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/lib/libvirt/images/centos7.img,size&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;10,bus&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;virtio,format&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;qcow2 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --accelerate &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --vnc --vncport&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;6001 --vnclisten&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;0.0.0.0 &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --noautoconsole &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    --cdrom&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/tmp/CentOS-7-x86_64-Minimal-1611.iso&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;这个命令比之前多了一些参数：&lt;/p&gt;
 
@@ -248,9 +252,7 @@ KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像�
 &lt;p&gt;首先，我们可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh list --all&lt;/code&gt;命令查看虚拟机状态，如果发现的确虚拟机状态为&lt;code class=&quot;highlighter-rouge&quot;&gt;shut down&lt;/code&gt;
 就可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh start&lt;/code&gt;命令来手动启动：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# virsh start centos7
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;virsh start centos7&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;命令中的参数&lt;code class=&quot;highlighter-rouge&quot;&gt;centos7&lt;/code&gt;是我们安装虚拟机时指定的虚拟机名字。&lt;/p&gt;
 
@@ -277,13 +279,42 @@ KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像�
 
 &lt;p&gt;接下来执行以下命令来设置并启用ttyS0：&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;# stty -F /dev/ttyS0 speed 9600
-# grub2-mkconfig -o /boot/grub2/grub.cfg
-# systemctl start serial-getty@ttyS0
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/div&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;stty -F /dev/ttyS0 speed 9600
+grub2-mkconfig -o /boot/grub2/grub.cfg
+systemctl start serial-getty@ttyS0&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
-&lt;p&gt;这样，就可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;来连接虚拟机了。&lt;/p&gt;</content><author><name></name></author><summary type="html">KVM简介</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+&lt;p&gt;这样，就可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh console&lt;/code&gt;来连接虚拟机了。&lt;/p&gt;
+
+&lt;h1 id=&quot;总结&quot;&gt;总结&lt;/h1&gt;
+
+&lt;p&gt;本文演示了基本的使用KVM创建虚拟机的方法。过程中涉及到了KVM、QEMU和libvirt这三种工具。它们进一
+步的详细示可以参考以下文档：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.linux-kvm.org/page/Main_Page&quot;&gt;KVM官网&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Kernel-based_Virtual_Machine&quot;&gt;Wikipedia: KVM&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.ibm.com/support/knowledgecenter/linuxonibm/liaat/liaatbestpractices_pdf.pdf&quot;&gt;Best Practices for KVM&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.ibm.com/support/knowledgecenter/en/linuxonibm/liaai.kvminstall/kvminstall_pdf.pdf&quot;&gt;Quick Start Guide for installing and running KVM&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://linux.dell.com/files/whitepapers/KVM_Virtualization_in_RHEL_7_Made_Easy.pdf&quot;&gt;KVM Virtualization in RHEL 7 Made Easy&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.qemu.org/&quot;&gt;QEMU官网&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/QEMU&quot;&gt;Wikipedia: QEMU&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://libvirt.org/index.html&quot;&gt;libvirt官网&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://en.community.dell.com/dell-blogs/direct2dell/b/direct2dell/archive/2014/03/13/emulation-or-virtualization-what-s-the-difference&quot;&gt;Emulation or virtualization: What’s the difference?&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;例中主要使用到了libvirt的&lt;code class=&quot;highlighter-rouge&quot;&gt;virt-install&lt;/code&gt;和
+&lt;code class=&quot;highlighter-rouge&quot;&gt;virsh&lt;/code&gt;命令，来启动和管理KVM虚拟机。同时，也用到了QEMU的镜像工具&lt;code class=&quot;highlighter-rouge&quot;&gt;qemu-img&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;这些工具的进一步说明，可以参考以下一些文档：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://libvirt.org/virshcmdref.html&quot;&gt;Virsh Command Reference&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://libvirt.org/formatdomain.htmlo&quot;&gt;Virsh Domain XML format&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://qemu.weilnetz.de/doc/qemu-doc.html&quot;&gt;QEMU Emulator User Documentation&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;注意&lt;/strong&gt; 本文中的命令用法和参数，以及上面列出的文档中使用的具体命令，可能会随时间和具体的工具
+版本发生变化。请以最新的官方文档为准。&lt;/p&gt;</content><author><name></name></author><summary type="html">概览</summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2017/04/19/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2017-04-19T18:55:36+08:00</published><updated>2017-04-19T18:55:36+08:00</updated><id>/jekyll/update/2017/04/19/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2017/04/19/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
 
 &lt;p&gt;To add new posts, simply add a file in the &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code class=&quot;highlighter-rouge&quot;&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
 

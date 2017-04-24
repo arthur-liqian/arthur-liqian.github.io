@@ -6,11 +6,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>使用KVM创建虚拟机</title>
-  <meta name="description" content="KVM简介">
+  <title>KVM快速入门</title>
+  <meta name="description" content="概览">
 
   <link rel="stylesheet" href="/assets/main.css">
-  <link rel="canonical" href="/kvm/2017/04/20/create-vm-with-kvm.html">
+  <link rel="canonical" href="/kvm/2017/04/20/kvm-quick-start.html">
   <link rel="alternate" type="application/rss+xml" title="李芊的笔记本" href="/feed.xml">
   
   
@@ -67,7 +67,7 @@
         <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title" itemprop="name headline">使用KVM创建虚拟机</h1>
+    <h1 class="post-title" itemprop="name headline">KVM快速入门</h1>
     <p class="post-meta">
       <time datetime="2017-04-20T22:55:36+08:00" itemprop="datePublished">
         
@@ -77,19 +77,44 @@
   </header>
 
   <div class="post-content" itemprop="articleBody">
-    <h1 id="kvm简介">KVM简介</h1>
+    <h1 id="概览">概览</h1>
 
-<p>TBD</p>
+<h2 id="虚拟化virtualization和模拟emulation">虚拟化(Virtualization)和模拟(Emulation)</h2>
 
-<h2 id="创建无网络的虚拟机">创建无网络的虚拟机</h2>
+<p>使用虚拟机以及其他虚拟资源的时候，经常会遇到的两个概念是虚拟化(Virtualization)和系统模拟
+(Emulation)。这两个概念有很多相似的地方，同时又紧密相联。</p>
 
-<h3 id="使用条件">使用条件</h3>
+<p>其中，系统模拟是指在系统A上模拟系统B的行为，使得原本只能在系统B上运行的软件也可以在系统A上运行。
+比如，在x86架构的系统上，模拟PowerPC架构，来运行PowerPC的原生软件。</p>
+
+<p>而虚拟化(Virtualization)则是指在一套(硬件)系统上，模拟出多套相互之间独立的虚拟系统出来，供不
+同的用户使用，以此来提高计算资源的使用率。比如，将一台物理服务器划分为三个虚拟服务器，分别作为
+Web服务器、应用服务器和数据库服务器。</p>
+
+<p>由于通常情况下，虚拟机的系统和宿主机系统很可能是异构的，所以虚拟化技术和系统模拟经常是同时使用
+的。</p>
+
+<h2 id="kvm和qemu">KVM和QEMU</h2>
+
+<p>KVM(Kernerl-based Virtual Machine)就是一种基于Linux内核的虚拟化技术。KVM本身不提供任何
+模拟功能，所以KVM经常和系统模拟工具QEMU搭配使用，共同提供一个完整的虚拟化环境。</p>
+
+<p>接下来，会通过实例来演示在CentOS/RHEL宿主机上，如何使用KVM/QEMU来快速的安装虚拟机。本文不包
+虚拟网格的配置内容，所以的虚拟机都使用默认生成的虚拟网络和虚拟网络设备。虚拟机可以访问宿主机以外
+的网络，从宿主机上也可以通过网络访问虚拟机，但从外部网络无法访问到虚拟机。</p>
+
+<h2 id="libvirt">libvirt</h2>
+
+<p>libvirt是一个虚拟平台的管理工具，可以用来管理KVM、Xen等工具。在下面的示例中，libvirt的相关
+工具会用来对KVM进行操作。</p>
+
+<h1 id="环境准备">环境准备</h1>
+
+<h2 id="环境条件">环境条件</h2>
 
 <p>使用KVM需要首先确认CPU是否支持vmx或者svm特性。在Linux系统下可以使用以下命令来确认：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># grep -E "vmx|svm" /proc/cpuinfo
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">grep -E <span class="s2">"vmx|svm"</span> /proc/cpuinfo</code></pre></figure>
 
 <p>如果此命令的输出不为空，如多行如下输出：</p>
 
@@ -101,13 +126,11 @@
 
 <p>如果输出为空，则说明CPU不支持KVM的运行。</p>
 
-<h3 id="包安装">包安装</h3>
+<h2 id="服务安装配置和启用">服务安装、配置和启用</h2>
 
 <p>在RedHat或者CentOS下，使用yum安装必需的包：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># yum install -y qemu-kvm libvirt virt-install
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">yum install -y qemu-kvm libvirt virt-install</code></pre></figure>
 
 <p>其中：</p>
 
@@ -119,47 +142,42 @@
 
 <p>包安装完成后，需要激活并启动libvirtd服务：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>systemctl enable libvirtd &amp;&amp; systemctl start libvirtd
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">systemctl <span class="nb">enable </span>libvirtd <span class="o">&amp;&amp;</span> systemctl start libvirtd</code></pre></figure>
 
 <p>接下来需要检查必要的内核模块：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>lsmod | grep "kvm"
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">lsmod | grep <span class="s2">"kvm"</span></code></pre></figure>
 
 <p>正常情况下，输出应当有kvm和kvm_intel或者kvm_amd，如:</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>kvm_intel             162153  0
-kvm                   525259  1 kvm_intel
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">kvm_intel             162153  0
+kvm                   525259  1 kvm_intel</code></pre></figure>
 
 <p>如果内核模块没有加载，需要手动加载：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># modprobe kvm
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">modprobe kvm</code></pre></figure>
 
 <ul>
-  <li>
-    <p>对于Intel平台，还需要执行</p>
-
-    <div class="highlighter-rouge"><pre class="highlight"><code>  # modprobe kvm-intel
-</code></pre>
-    </div>
-  </li>
-  <li>
-    <p>对于AMD平台</p>
-
-    <div class="highlighter-rouge"><pre class="highlight"><code>  # modprobe kvm-amd
-</code></pre>
-    </div>
-  </li>
+  <li>对于Intel平台，还需要执行</li>
 </ul>
 
-<h3 id="导入现有磁盘镜像">导入现有磁盘镜像</h3>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell"> 
+    modprobe kvm-intel
+    </code></pre></figure>
+
+<ul>
+  <li>对于AMD平台</li>
+</ul>
+
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">    modprobe kvm-amd
+    </code></pre></figure>
+
+<h1 id="虚拟机安装">虚拟机安装</h1>
+
+<p>接下来会演示两种安装虚拟机的方式。一种是导入已有系统的系统镜像文件，这种方式经常用于将一个现有的
+系统迁移到新环境，或者将备份的系统还原。另一种是使用系统安装光盘镜像重新安装一个全新的虚拟机。</p>
+
+<h2 id="导入现有磁盘镜像">导入现有磁盘镜像</h2>
 
 <p>使用<code class="highlighter-rouge">virt-install</code>可以导入一个已经安装配置好的系统的镜像文件。导入完成后，这个镜像文件还会作
 为虚拟机系统运行时的系统分区，用于继续保存系统的文件。</p>
@@ -174,17 +192,15 @@ kvm                   525259  1 kvm_intel
 <p>我们可以使用<code class="highlighter-rouge">qemu-img</code>工具来查看和操作磁盘镜像文件。比如，使用以下命令来查看当前目录下的
 cirros-0.3.5-i386-disk.img 镜像文件信息：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># qemu-img info cirros-0.3.5-i386-disk.img
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">qemu-img info cirros-0.3.5-i386-disk.img
 
 image: cirros-0.3.5-i386-disk.img
 file format: qcow2
-virtual size: 39M (41126400 bytes)
+virtual size: 39M <span class="o">(</span>41126400 bytes<span class="o">)</span>
 disk size: 12M
 cluster_size: 65536
 Format specific information:
-    compat: 0.10
-</code></pre>
-</div>
+    compat: 0.10</code></pre></figure>
 
 <p>返回值中的file format字段是指磁盘镜像文件的格式，这里CirrOS的镜像格式是qcow2，也即QEMU的一
 种 copy-on-write 格式。对于镜像格式，这里不再展开。</p>
@@ -194,21 +210,17 @@ Format specific information:
 <p>一般来说，libvirt维护的虚拟机的磁盘镜像都保存在<code class="highlighter-rouge">/var/lib/libvirt/images/</code>目录下，所以这里
 我们首先将下载的镜像文件拷贝到这个目录下：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">cp cirros-0.3.5-i386-disk.img /var/lib/libvirt/images/cirros-vm.img</code></pre></figure>
 
 <p>然后，就可以通过导入磁盘镜像的方式来创建虚拟机了：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># virt-install --name cirros-vm \
-        --ram 500 \
-        --disk path=/var/lib/libvirt/images/cirros-vm.img \
-        --accelerate \
-        --vnc \
-        --import \
-        --noautoconsole
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">virt-install --name cirros-vm <span class="se">\</span>
+    --ram 500 <span class="se">\</span>
+    --disk <span class="nv">path</span><span class="o">=</span>/var/lib/libvirt/images/cirros-vm.img <span class="se">\</span>
+    --accelerate <span class="se">\</span>
+    --vnc <span class="se">\</span>
+    --import <span class="se">\</span>
+    --noautoconsole</code></pre></figure>
 
 <p>这里，各个参数的意义如下：</p>
 
@@ -228,13 +240,11 @@ Format specific information:
 <p>执行完<code class="highlighter-rouge">virt-install</code>命令后，可以使用<code class="highlighter-rouge">virsh</code>命令对虚拟机进行管理操作。比如查看当前宿主机上的
 所有虚拟机：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># virsh list --all
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">virsh list --all
  Id    Name                           State
 ----------------------------------------------------
 6     cirros-vm                      running
--     cirros-1                       shut off
-</code></pre>
-</div>
+-     cirros-1                       shut off</code></pre></figure>
 
 <p>参数<code class="highlighter-rouge">--all</code>表示显示所有的虚拟机，包括已关机的。如果不指定此参数，默认只显示运行中的虚拟机。</p>
 
@@ -242,14 +252,12 @@ Format specific information:
 
 <p>由于现在还没有配置好虚拟的网络和SSH服务，可以通<code class="highlighter-rouge">virsh console</code>来连接到虚拟机：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># virsh console cirros-vm
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell"><span class="c"># virsh console cirros-vm</span>
 Connected to domain cirros-vm
 Escape character is ^]
 
-login as 'cirros' user. default password: 'cubswin:)'. use 'sudo' for root.
-cirros login:
-</code></pre>
-</div>
+login as <span class="s1">'cirros'</span> user. default password: <span class="s1">'cubswin:)'</span>. use <span class="s1">'sudo'</span> <span class="k">for </span>root.
+cirros login:</code></pre></figure>
 
 <p>以上输出中的第一行表示虚拟机的控制台已经成功连接上。第二行则是提示可以使用快捷键<code class="highlighter-rouge">ctrl+]</code>来退出
 控制台连接。</p>
@@ -258,7 +266,7 @@ cirros login:
 时可以输入回车来让系统再次显示登录或者控制台对话提示。比如，上例输出的后两行即CirrOS的登录提示。
 注意，如上面的登录提示所述，CirrOS的默认登录账号和密码是”cirros”和”cubswin:)”。</p>
 
-<h3 id="使用光盘镜像安装新系统">使用光盘镜像安装新系统</h3>
+<h2 id="使用光盘镜像安装新系统">使用光盘镜像安装新系统</h2>
 
 <p>除了导入一个已有的磁盘镜像，还可以通过系统安装光盘镜像来安装一个新的虚拟机。</p>
 
@@ -269,22 +277,18 @@ cirros login:
 KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像文件放到qemu账号有权限访问的目录下，比
 如：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># mv CentOS-7-x86_64-Minimal-1611.iso /tmp/
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">mv CentOS-7-x86_64-Minimal-1611.iso /tmp/</code></pre></figure>
 
 <p>然后就可以执行以下命令开始虚拟机安装了：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># virt-install --name centos7 \
-    --ram=1024 \
-    --vcpus=2 \
-    --disk path=/var/lib/libvirt/images/centos7.img,size=10,bus=virtio,format=qcow2 \
-    --accelerate \
-    --vnc --vncport=6001 --vnclisten=0.0.0.0 \
-    --noautoconsole \
-    --cdrom=/tmp/CentOS-7-x86_64-Minimal-1611.iso
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">virt-install --name centos7 <span class="se">\</span>
+    --ram<span class="o">=</span>1024 <span class="se">\</span>
+    --vcpus<span class="o">=</span>2 <span class="se">\</span>
+    --disk <span class="nv">path</span><span class="o">=</span>/var/lib/libvirt/images/centos7.img,size<span class="o">=</span>10,bus<span class="o">=</span>virtio,format<span class="o">=</span>qcow2 <span class="se">\</span>
+    --accelerate <span class="se">\</span>
+    --vnc --vncport<span class="o">=</span>6001 --vnclisten<span class="o">=</span>0.0.0.0 <span class="se">\</span>
+    --noautoconsole <span class="se">\</span>
+    --cdrom<span class="o">=</span>/tmp/CentOS-7-x86_64-Minimal-1611.iso</code></pre></figure>
 
 <p>这个命令比之前多了一些参数：</p>
 
@@ -326,9 +330,7 @@ KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像�
 <p>首先，我们可以通过<code class="highlighter-rouge">virsh list --all</code>命令查看虚拟机状态，如果发现的确虚拟机状态为<code class="highlighter-rouge">shut down</code>
 就可以使用<code class="highlighter-rouge">virsh start</code>命令来手动启动：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># virsh start centos7
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">virsh start centos7</code></pre></figure>
 
 <p>命令中的参数<code class="highlighter-rouge">centos7</code>是我们安装虚拟机时指定的虚拟机名字。</p>
 
@@ -355,13 +357,42 @@ KVM会使用qemu账号来运行虚拟机的模拟进程，所以需要将镜像�
 
 <p>接下来执行以下命令来设置并启用ttyS0：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code># stty -F /dev/ttyS0 speed 9600
-# grub2-mkconfig -o /boot/grub2/grub.cfg
-# systemctl start serial-getty@ttyS0
-</code></pre>
-</div>
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">stty -F /dev/ttyS0 speed 9600
+grub2-mkconfig -o /boot/grub2/grub.cfg
+systemctl start serial-getty@ttyS0</code></pre></figure>
 
 <p>这样，就可以通过<code class="highlighter-rouge">virsh console</code>来连接虚拟机了。</p>
+
+<h1 id="总结">总结</h1>
+
+<p>本文演示了基本的使用KVM创建虚拟机的方法。过程中涉及到了KVM、QEMU和libvirt这三种工具。它们进一
+步的详细示可以参考以下文档：</p>
+
+<ul>
+  <li><a href="https://www.linux-kvm.org/page/Main_Page">KVM官网</a></li>
+  <li><a href="https://en.wikipedia.org/wiki/Kernel-based_Virtual_Machine">Wikipedia: KVM</a></li>
+  <li><a href="https://www.ibm.com/support/knowledgecenter/linuxonibm/liaat/liaatbestpractices_pdf.pdf">Best Practices for KVM</a></li>
+  <li><a href="https://www.ibm.com/support/knowledgecenter/en/linuxonibm/liaai.kvminstall/kvminstall_pdf.pdf">Quick Start Guide for installing and running KVM</a></li>
+  <li><a href="http://linux.dell.com/files/whitepapers/KVM_Virtualization_in_RHEL_7_Made_Easy.pdf">KVM Virtualization in RHEL 7 Made Easy</a></li>
+  <li><a href="http://www.qemu.org/">QEMU官网</a></li>
+  <li><a href="https://en.wikipedia.org/wiki/QEMU">Wikipedia: QEMU</a></li>
+  <li><a href="http://libvirt.org/index.html">libvirt官网</a></li>
+  <li><a href="http://en.community.dell.com/dell-blogs/direct2dell/b/direct2dell/archive/2014/03/13/emulation-or-virtualization-what-s-the-difference">Emulation or virtualization: What’s the difference?</a></li>
+</ul>
+
+<p>例中主要使用到了libvirt的<code class="highlighter-rouge">virt-install</code>和
+<code class="highlighter-rouge">virsh</code>命令，来启动和管理KVM虚拟机。同时，也用到了QEMU的镜像工具<code class="highlighter-rouge">qemu-img</code>。</p>
+
+<p>这些工具的进一步说明，可以参考以下一些文档：</p>
+
+<ul>
+  <li><a href="http://libvirt.org/virshcmdref.html">Virsh Command Reference</a></li>
+  <li><a href="http://libvirt.org/formatdomain.htmlo">Virsh Domain XML format</a></li>
+  <li><a href="https://qemu.weilnetz.de/doc/qemu-doc.html">QEMU Emulator User Documentation</a></li>
+</ul>
+
+<p><strong>注意</strong> 本文中的命令用法和参数，以及上面列出的文档中使用的具体命令，可能会随时间和具体的工具
+版本发生变化。请以最新的官方文档为准。</p>
 
   </div>
 
