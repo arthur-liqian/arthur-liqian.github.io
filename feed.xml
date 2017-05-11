@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-05-11T15:33:40+08:00</updated><id>/</id><title type="html">不写日记</title><subtitle>还没想好
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-05-11T17:53:09+08:00</updated><id>/</id><title type="html">不写日记</title><subtitle>还没想好
 </subtitle><entry><title type="html">Namespace网络互联-使用Linux Bridge</title><link href="/network/2017/05/07/namespace-interconnecting-with-linux-bridge.html" rel="alternate" type="text/html" title="Namespace网络互联-使用Linux Bridge" /><published>2017-05-07T14:25:36+08:00</published><updated>2017-05-07T14:25:36+08:00</updated><id>/network/2017/05/07/namespace-interconnecting-with-linux-bridge</id><content type="html" xml:base="/network/2017/05/07/namespace-interconnecting-with-linux-bridge.html">&lt;h1 id=&quot;概览&quot;&gt;概览&lt;/h1&gt;
 
 &lt;p&gt;使用软件对网络进行虚拟化是虚拟化技术的一个很重要的组成部分。通过对网络进行虚拟化，才能在不受实际
@@ -843,7 +843,9 @@ Linux Bridge自身原理产生的一些限制。同时，也简单介绍了路�
 
 &lt;p&gt;本文中，主要使用iproute2工具来对网络设备进行操作。关于这个工具，一个比较完整的文档是：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;http://baturin.org/docs/iproute2/&quot;&gt;Baturin’s iproute2 Doc&lt;/a&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://baturin.org/docs/iproute2/&quot;&gt;Baturin’s iproute2 Doc&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
 
 &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;brctl&lt;/code&gt;是一个用来专门对Linux Bridge进行管理和操作的工具。它的使用非常广泛，文档众多，使用方法
 和iproute2的相关命令很类似。本文不再展示具体例子，以及文档链接。&lt;/p&gt;</content><author><name></name></author><summary type="html">概览</summary></entry><entry><title type="html">创业和创新</title><link href="/startup/innovation/2017/04/25/startup-and-innovation.html" rel="alternate" type="text/html" title="创业和创新" /><published>2017-04-25T21:55:36+08:00</published><updated>2017-04-25T21:55:36+08:00</updated><id>/startup/innovation/2017/04/25/startup-and-innovation</id><content type="html" xml:base="/startup/innovation/2017/04/25/startup-and-innovation.html">&lt;p&gt;昨天看了一篇文章&lt;a href=&quot;http://36kr.com/p/5072028.html&quot;&gt;&lt;em&gt;一位投资人，用4小时讲了一个”用技术创业干掉大企业并改变世界”的故事&lt;/em&gt;&lt;/a&gt;，
