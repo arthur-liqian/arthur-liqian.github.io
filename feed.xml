@@ -1,5 +1,852 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-04-26T00:05:03+08:00</updated><id>/</id><title type="html">不写日记</title><subtitle>还没想好
-</subtitle><entry><title type="html">创业和创新</title><link href="/startup/innovation/2017/04/25/startup-and-innovation.html" rel="alternate" type="text/html" title="创业和创新" /><published>2017-04-25T21:55:36+08:00</published><updated>2017-04-25T21:55:36+08:00</updated><id>/startup/innovation/2017/04/25/startup-and-innovation</id><content type="html" xml:base="/startup/innovation/2017/04/25/startup-and-innovation.html">&lt;p&gt;昨天看了一篇文章&lt;a href=&quot;http://36kr.com/p/5072028.html&quot;&gt;&lt;em&gt;一位投资人，用4小时讲了一个”用技术创业干掉大企业并改变世界”的故事&lt;/em&gt;&lt;/a&gt;，
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-05-11T15:33:40+08:00</updated><id>/</id><title type="html">不写日记</title><subtitle>还没想好
+</subtitle><entry><title type="html">Namespace网络互联-使用Linux Bridge</title><link href="/network/2017/05/07/namespace-interconnecting-with-linux-bridge.html" rel="alternate" type="text/html" title="Namespace网络互联-使用Linux Bridge" /><published>2017-05-07T14:25:36+08:00</published><updated>2017-05-07T14:25:36+08:00</updated><id>/network/2017/05/07/namespace-interconnecting-with-linux-bridge</id><content type="html" xml:base="/network/2017/05/07/namespace-interconnecting-with-linux-bridge.html">&lt;h1 id=&quot;概览&quot;&gt;概览&lt;/h1&gt;
+
+&lt;p&gt;使用软件对网络进行虚拟化是虚拟化技术的一个很重要的组成部分。通过对网络进行虚拟化，才能在不受实际
+物理网络设备和拓扑限制的情况下，让虚拟机之间进行网络通信。本文介绍在同一个Linux系统下，使用
+Linux Bridge和VETH设备来组建虚拟网络。&lt;/p&gt;
+
+&lt;h2 id=&quot;linux-namespace&quot;&gt;Linux Namespace&lt;/h2&gt;
+
+&lt;p&gt;Namespace是Linux的一个用来对系统资源进行虚拟化和隔离的功能。每个Namespace有自己的独立的进程
+ID、主机名、网络访问等，可以当成一个独立的系统。在本文，一个Namespace就相当于网络上的一台电脑
+或者服务器。&lt;/p&gt;
+
+&lt;h2 id=&quot;linux-bridge&quot;&gt;Linux Bridge&lt;/h2&gt;
+
+&lt;p&gt;Linux Bridge是一种虚拟的网络转发设备，工作在2层。一个Linux Bridge可以连接多个Linux上的网络
+设备，包括物理设备和虚拟设备。它会将所有的数据转发到所有连接在它上面的设备。在本文中，我们使用
+Linux Bridge在多个虚拟网络设备之间进行数据交换，类似一个基本的交换机。&lt;/p&gt;
+
+&lt;h2 id=&quot;veth&quot;&gt;VETH&lt;/h2&gt;
+
+&lt;p&gt;VETH设备是一种虚拟的以太网设备。它总是成对使用，就像一条网线的两端，用来分别连接两个网络设备，
+来使得这两个被连接的网络设备可以通过VETH进行通信。在本文中，我们用VETH来连接Namespace和Linux
+ Bridge。&lt;/p&gt;
+
+&lt;p&gt;但KVM一般不能直接使用VETH设备。&lt;/p&gt;
+
+&lt;h2 id=&quot;vtap&quot;&gt;vTAP&lt;/h2&gt;
+
+&lt;p&gt;vTAP设备是另一种虚拟网络设备，作用类似于VETH。不过vTAP是单独使用的，不像VETH需要成对使用。
+vTAP会映射成一个文件描述符(file descriptor)供程序或者虚拟机使用，不能直接通过Namespace
+使用。KVM使用vTAP设备来给虚拟机提供网卡设备。&lt;/p&gt;
+
+&lt;p&gt;vTAP设备同样可以配合Linux Bridge使用，不过为了实验简单，本文只演示VETH设备的使用。&lt;/p&gt;
+
+&lt;h1 id=&quot;使用veth对连接两个namespace&quot;&gt;使用VETH对连接两个Namespace&lt;/h1&gt;
+
+&lt;p&gt;同一个Linux系统下两个Namespace网络互联的最简单的方式就是使用VETH设备对(veth peer)直接连
+接。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/namespace-interconnecting-with-linux-bridge/veth_peer.png&quot; alt=&quot;使用VETH对连接两个Namespace&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如上图所示结构，我们需要两个Namespace：ns1和ns2，然后使用一对VETH对&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;来连接
+这两个Namespace。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建两个Namespace&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns add ns1
+ ip netns add ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip&lt;/code&gt;是iproute2的入口。iproute2是一套用来管理Linux网络的工具集。其中命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip netns&lt;/code&gt;
+ 是用来管理网络Namespce的。&lt;code class=&quot;highlighter-rouge&quot;&gt;add&lt;/code&gt;是&lt;code class=&quot;highlighter-rouge&quot;&gt;ip netns&lt;/code&gt;的子命令，用来添加一个新的
+ Namespace。&lt;code class=&quot;highlighter-rouge&quot;&gt;ns1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns2&lt;/code&gt;就是新增的Namespace的名字。&lt;/p&gt;
+
+    &lt;p&gt;然后可以查看当前系统下所有的Namespace&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns list
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;可以在这个命令的输出中找到刚才新创建的两个Namespce&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建veth对&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link add veth1 type veth peer name veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link&lt;/code&gt;是用来管理Linux虚拟连接的。后面的&lt;code class=&quot;highlighter-rouge&quot;&gt;add&lt;/code&gt;表示创建一个新的虚拟连接，新虚拟连接
+ 的名字是紧跟其后的参数&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;。参数&lt;code class=&quot;highlighter-rouge&quot;&gt;type veth&lt;/code&gt;则表示新创建的虚拟连接&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;类型是
+ &lt;code class=&quot;highlighter-rouge&quot;&gt;veth&lt;/code&gt;。&lt;code class=&quot;highlighter-rouge&quot;&gt;peer&lt;/code&gt;表示后面的参数是关于&lt;code class=&quot;highlighter-rouge&quot;&gt;veth&lt;/code&gt;连接的另一端的。&lt;code class=&quot;highlighter-rouge&quot;&gt;name veth2&lt;/code&gt;表示对端veth的
+ 设备名为&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;。&lt;/p&gt;
+
+    &lt;p&gt;创建完成后，可以使用以下命令来查看所有的veth类型的虚拟连接：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link show type veth
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;这里的&lt;code class=&quot;highlighter-rouge&quot;&gt;show&lt;/code&gt;和上面的&lt;code class=&quot;highlighter-rouge&quot;&gt;add&lt;/code&gt;一样，是&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link&lt;/code&gt;命令的子命令，可以用来查看虚拟连接的信息。后
+ 面的&lt;code class=&quot;highlighter-rouge&quot;&gt;type veth&lt;/code&gt;参数表示只显示veth类型的连接信息。&lt;/p&gt;
+
+    &lt;p&gt;如果veth对创建成功，就可以在这个命令的输出中看到如下的输出信息：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 53: veth2@veth1: &amp;lt;BROADCAST,MULTICAST,M-DOWN&amp;gt; mtu 1500 qdisc noop state DOWN mode DEFAULT qlen 1000
+     link/ether 66:1e:63:5d:c1:c0 brd ff:ff:ff:ff:ff:ff
+ 54: veth1@veth2: &amp;lt;BROADCAST,MULTICAST,M-DOWN&amp;gt; mtu 1500 qdisc noop state DOWN mode DEFAULT qlen 1000
+     link/ether f6:17:23:a8:88:f3 brd ff:ff:ff:ff:ff:ff
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;将veth设备分别加入到各自的Namespace&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set veth1 netns ns1
+ ip link set veth2 netns ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;set&lt;/code&gt;是用来设置虚拟连接属性和状态的&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link&lt;/code&gt;子命令。它后面紧跟着的参数是要设置的设备的名
+ 字，这里就是&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;。&lt;code class=&quot;highlighter-rouge&quot;&gt;netns&lt;/code&gt;表示要设置的属性是Namespace，&lt;code class=&quot;highlighter-rouge&quot;&gt;ns1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns2&lt;/code&gt;则分
+ 别是目标Namespace的名字。&lt;/p&gt;
+
+    &lt;p&gt;执行完这两个命令后，再使用命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link show type veth&lt;/code&gt;就看不到这两个veth设备了，因为
+ 这个命令是查看默认Namespace下的虚拟连接，而这两个设备已经被我们分别移到Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns1&lt;/code&gt;
+ 和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns2&lt;/code&gt;下了。&lt;/p&gt;
+
+    &lt;p&gt;要想查看这两个Namespace下的veth设备信息，需要在对应的Namespace来执行&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link show&lt;/code&gt;命
+ 令：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns1 ip link show type veth
+ ip netns exec ns2 ip link show type veth
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;exec&lt;/code&gt;是&lt;code class=&quot;highlighter-rouge&quot;&gt;ip netns&lt;/code&gt;的另一个子命令，表示使用其后紧跟的参数所指定的Namespace来执行命令。
+ 这里就是&lt;code class=&quot;highlighter-rouge&quot;&gt;ns1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns2&lt;/code&gt;。Namespace名字参数后面就是要执行的命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link show type 
+ veth&lt;/code&gt;。当然，这两个命令的输出里只能看到对应Namespace下的设备。&lt;/p&gt;
+
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ip&lt;/code&gt;命令本身也支持指定Namespace参数，所以以上命令可以简化为：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 link show type veth
+ ip -n ns2 link show type veth
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;对于本身不支持Namespace参数的命令，仍然需要通过&lt;code class=&quot;highlighter-rouge&quot;&gt;ip netns exec&lt;/code&gt;来在指定Namespace下执
+ 行。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;在各自的Namespace中设置VETH设置的IP并启用&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;我们可以使用命令&lt;code class=&quot;highlighter-rouge&quot;&gt;ip address show&lt;/code&gt;来查看具体设备的协议和地址状态。对于我们创建的两个veth
+ 设备，具体命令就是：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 address show veth1
+ ip -n ns1 address show veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;其输出分别类似：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 54: veth1@if53: &amp;lt;BROADCAST,MULTICAST&amp;gt; mtu 1500 qdisc noop state DOWN qlen 1000
+     link/ether f6:17:23:a8:88:f3 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;和&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 53: veth2@if54: &amp;lt;BROADCAST,MULTICAST&amp;gt; mtu 1500 qdisc noop state DOWN qlen 1000
+     link/ether 66:1e:63:5d:c1:c0 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;可以看到，此时这两个veth设备都没有IP地址，并且状态都是&lt;code class=&quot;highlighter-rouge&quot;&gt;DOWN&lt;/code&gt;。因此，在使用它们之前，需要
+ 给它们指定地址，并启用。&lt;/p&gt;
+
+    &lt;p&gt;给网络设备添加IPv4地址的命令如下：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 address add 10.120.0.11/24 dev veth1
+ ip -n ns2 address add 10.120.0.12/24 dev veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;命令中的&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.0.11/24&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.0.12&lt;/code&gt;是设备的IPv4地址和子网掩码。&lt;code class=&quot;highlighter-rouge&quot;&gt;dev&lt;/code&gt;参数表示后
+ 面紧跟的参数&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;是要设置地址的设备名字。&lt;/p&gt;
+
+    &lt;p&gt;接下来，使用以下命令来启用这两个设备：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 link set veth1 up
+ ip -n ns2 link set veth2 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;执行完以上命令以后，我们再使用&lt;code class=&quot;highlighter-rouge&quot;&gt;ip address show&lt;/code&gt;命令查看veth设备的地址，就可以看到输出变
+ 为类似：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 54: veth1@if53: &amp;lt;BROADCAST,MULTICAST,UP,LOWER_UP&amp;gt; mtu 1500 qdisc noqueue state UP qlen 1000
+     link/ether f6:17:23:a8:88:f3 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+     inet 10.120.0.11/24 scope global veth1
+         valid_lft forever preferred_lft forever
+     inet6 fe80::f417:23ff:fea8:88f3/64 scope link
+         valid_lft forever preferred_lft forever
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;和&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 53: veth2@if54: &amp;lt;BROADCAST,MULTICAST,UP,LOWER_UP&amp;gt; mtu 1500 qdisc noqueue state UP qlen 1000
+     link/ether 66:1e:63:5d:c1:c0 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+     inet 10.120.0.12/24 scope global veth2
+        valid_lft forever preferred_lft forever
+     inet6 fe80::641e:63ff:fe5d:c1c0/64 scope link
+        valid_lft forever preferred_lft forever
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;此时，veth设备的地址和状态都已经正常，可以开始使用了。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;验证Namespce之间的网络连接性&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;如果之前的操作都正常，接下来就可以在两个Namespace进行网络通信了：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns1 ping -c 5 10.120.0.12
+ ip netns exec ns2 ping -c 5 10.120.0.11
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;清理实验资源&quot;&gt;清理实验资源&lt;/h3&gt;
+
+&lt;p&gt;如果之前的操作出错、希望重新实验或者继续其他实验，可能需要清理操作过程中创建的资源。&lt;/p&gt;
+
+&lt;p&gt;根据资源之前的依赖关系，可以按照以下顺序清理。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;清理VETH设备&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 link del veth1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;或者&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns2 link del veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;因为veth设备必须是成对的，&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;只要删除其一一个，另一个也就同时被删除了，就
+ 算它们属于不同的Namespace，所以以上两个命令只需要执行任意一个。&lt;/p&gt;
+
+    &lt;p&gt;如果清理veth设备时，设备还没有加入Namespace，只需要将上面命令中的&lt;code class=&quot;highlighter-rouge&quot;&gt;-n ns1&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;-n ns2&lt;/code&gt;
+ 参数去掉即可。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;清理Namespace&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns del ns1
+ ip netns del ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;在删除Namespace时，此Namespace下管理的所有虚拟网络设备也都会自动删除，所以如果veth设备
+ 已经加入到Namespce中，则可以跳过单独清理veth设备的过程，直接清理Namespace。&lt;/p&gt;
+
+    &lt;p&gt;如果当前系统下所有的Namespace都不需要清理，则可以通过添加&lt;code class=&quot;highlighter-rouge&quot;&gt;-all&lt;/code&gt;参数来一次清理所有的
+ Namespace：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -all netns del
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;此时不需要再指定具体的Namespace名字。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h1 id=&quot;使用linux-bridge和veth连接多个namespace&quot;&gt;使用Linux Bridge和VETH连接多个Namespace&lt;/h1&gt;
+
+&lt;p&gt;使用VETH设备对只能连接两个Namespace，如果要让多个Namespace的网络互通，一种办法就是使用
+Linux Bridge配合VETH设备使用。VETH设备对的一端仍然连接到Namespace上，而另一端连接到Linux
+Bridge上。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/namespace-interconnecting-with-linux-bridge/linux_bridge_veth.png&quot; alt=&quot;使用Linux Bridget和VETH连接Namespace&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;基本网络结构如上图。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建Namespace&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;创建Namespace的方法和前文相同：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns add ns1
+ ip netns add ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建并启用Linux Bridge&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link add br1 type bridge
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;Linux Bridge同样也是一种Linux虚拟连接，所以同样使用&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link add&lt;/code&gt;命令来创建。类型对应
+ 选择为&lt;code class=&quot;highlighter-rouge&quot;&gt;bridge&lt;/code&gt;&lt;/p&gt;
+
+    &lt;p&gt;类似的，同样可以通过以&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link show&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ip link address&lt;/code&gt;命令来查看Bridge的状态：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link show type bridge
+ ip link show br1
+ ip address type bridge
+ ip address show br1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;此时，可以看到&lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;的状态仍然是&lt;code class=&quot;highlighter-rouge&quot;&gt;DOWN&lt;/code&gt;，所以需要使用以下命令启用：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;Bridge类似交互机，自身不需要IP地址，所以此时&lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;已经可以使用了。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建veth设备对&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;这里需要两对veth设备对：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link add veth1 type veth peer name br1-veth1
+ ip link add veth2 type veth peer name br2-veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;这里，veth设备的名字是可以任意的，只要在当前系统中不重复即可。为了便于区分是连接在
+ Namespace上还是Bridge上，分别命名为了&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;这样的模式，但实际不是必需
+ 的。veth设备对中哪个连接到Namespace，哪个连接到Bridge，也是可以任意选取的。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;连接veth设备一端到Namespace并设备地址和状态&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;将&lt;code class=&quot;highlighter-rouge&quot;&gt;veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;veth2&lt;/code&gt;分别连接到Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns2&lt;/code&gt;，并设置地址和启用。它们的对端在后
+ 面设置。&lt;/p&gt;
+
+    &lt;p&gt;连接veth到Namespace:&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set veth1 netns ns1
+ ip link set veth2 netns ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;设置IP地址：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 address add 10.120.0.11/24 dev veth1
+ ip -n ns2 address add 10.120.0.12/24 dev veth2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;启用veth设备：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 link set veth1 up
+ ip -n ns2 link set veth2 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;连接veth设备的另一端到Linux Bridge并启用&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;将&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth2&lt;/code&gt;连接到Linux Bridge &lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;上，并启用。连接在Bridge上的设备
+ 是不需要设置IP地址的，直接启用后就可以使用了。&lt;/p&gt;
+
+    &lt;p&gt;连接veth到Bridge:&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1-veth1 master br1
+ ip link set br1-veth2 master br1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;上面命令中的&lt;code class=&quot;highlighter-rouge&quot;&gt;master&lt;/code&gt;参数后面紧跟另一个设备的名字，这个设备将作为当前设备的master设备。在
+ 这里就意味着将&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth2&lt;/code&gt;连接到&lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;上。&lt;/p&gt;
+
+    &lt;p&gt;此时，除了使用上文中的方便来查看设备的以外，还可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;master&lt;/code&gt;参数来查看连接到一个Bridge
+ 上的所有设备：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link show master br1
+ ip address show master br1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;接下来，启用Bridge上连接的VETH设备：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1-veth1 up
+ ip link set br1-veth2 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;验证Namespace之间的连通性&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns1 ping -c 5 10.120.0.12
+ ip netns exec ns2 ping -c 5 10.120.0.11
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;清理实验资源-1&quot;&gt;清理实验资源&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;清理Namespace和VETH&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns1 link dev veth1
+ ip -n ns2 link dev vthe2
+ ip netns del ns1
+ ip netns del ns2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;Namespace和VETH资源的清理，和上一节的清理方式相同，这里不再详细说明。&lt;/p&gt;
+
+    &lt;p&gt;如果需要只将VETH从一个Bridge上断开连接，可以使用如下命令：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1-veth1 nomaster
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;nomaster&lt;/code&gt;参数就表示将&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;设备的master设备清空，也就意味着&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;从&lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;
+ 上解绑了。&lt;/p&gt;
+
+    &lt;p&gt;如果需要将一个VETH设备从一个Bridge连接到另一个，比如将原本连接在&lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;上的&lt;code class=&quot;highlighter-rouge&quot;&gt;br1-veth1&lt;/code&gt;
+ 连接到&lt;code class=&quot;highlighter-rouge&quot;&gt;br2&lt;/code&gt;上，可以使用以下命令：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1-veth1 master br2
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;清理Linux Bridge&lt;/p&gt;
+
+    &lt;p&gt;删除Bridge的方法和删除其他Link虚拟连接的方式相同：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link del br1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h1 id=&quot;同一linux-bridge连接多个网段&quot;&gt;同一Linux Bridge连接多个网段&lt;/h1&gt;
+
+&lt;p&gt;按照上一节的方法连接到同一个Linux Bridge下的Namespace，其网络设备是可以属于不同网段的。其网
+段是根据设备的地址和掩码来确认的。比如&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.11/24&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.12/24&lt;/code&gt;同属于网段
+&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24&lt;/code&gt;网段。而&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.11/24&lt;/code&gt;则属于另一个网段&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;连在同一个Bridge下的、属于不同网段的Namespace网络设备，默认情况下相互之间也是不能通信的。比如
+下图中&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/namespace-interconnecting-with-linux-bridge/linux_bridge_multi_net.png&quot; alt=&quot;同一Linux Bridge连接多个网段&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;与&lt;code class=&quot;highlighter-rouge&quot;&gt;ns12&lt;/code&gt;之间，&lt;code class=&quot;highlighter-rouge&quot;&gt;ns21&lt;/code&gt;与&lt;code class=&quot;highlighter-rouge&quot;&gt;ns22&lt;/code&gt;之间是互通的，但其他的连接都是不通的。比如
+&lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;无法与&lt;code class=&quot;highlighter-rouge&quot;&gt;ns21&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;ns22&lt;/code&gt;互通。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建Namespace&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns add ns11
+ ip netns add ns12
+ ip netns add ns21
+ ip netns add ns22
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建Linux Bridge并启用&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link add br1 type bridge
+ ip link set br1 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建VETH对&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link add veth11 type veth peer name br1-veth11
+ ip link add veth12 type veth peer name br1-veth12
+ ip link add veth21 type veth peer name br1-veth21
+ ip link add veth22 type veth peer name br1-veth22
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;连接VETH到Namespace、设置地址并启用&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set veth11 netns ns11
+ ip link set veth12 netns ns12
+ ip link set veth21 netns ns21
+ ip link set veth22 netns ns22
+ ip -n ns11 address add 10.120.1.11/24 dev veth11
+ ip -n ns12 address add 10.120.1.12/24 dev veth12
+ ip -n ns21 address add 10.120.2.21/24 dev veth21
+ ip -n ns22 address add 10.120.2.22/24 dev veth22
+ ip -n ns11 link set veth11 up
+ ip -n ns12 link set veth12 up
+ ip -n ns21 link set veth21 up
+ ip -n ns22 link set veth22 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;连接VETH到Linux Bridge并启用&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip link set br1-veth11 master br1
+ ip link set br1-veth12 master br1
+ ip link set br1-veth21 master br1
+ ip link set br1-veth22 master br1
+ ip link set br1-veth11 up
+ ip link set br1-veth12 up
+ ip link set br1-veth21 up
+ ip link set br1-veth22 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;验证Namespace间的网络连通性&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;同一个网段下的Namespace是可以互通的：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns11 ping -c 5 10.120.1.12
+ ip netns exec ns12 ping -c 5 10.120.1.11
+ ip netns exec ns21 ping -c 5 10.120.2.22
+ ip netns exec ns22 ping -c 5 10.120.2.21
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;而不同网段之间是不通的，比如：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns11 ping -c 5 10.120.2.21
+ ip netns exec ns21 ping -c 5 10.120.1.11
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;多网段之间打通&quot;&gt;多网段之间打通&lt;/h2&gt;
+
+&lt;p&gt;Linux Bridge是工作在2层，根据MAC地址来对信息进行操作，所以不同网段之间的隔离并不是由于Linux
+Bridge导致的。&lt;/p&gt;
+
+&lt;p&gt;对一个Namespace，比如&lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;执行以下命令：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route show
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;这条命令会显示所有的路由规则。这里我们可以得到如下输出：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;10.120.1.0/24 dev veth11  proto kernel  scope link  src 10.120.1.11
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;我们感兴趣的部分是&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24 dev veth11&lt;/code&gt;。其中&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24&lt;/code&gt;部分，表示这条规则对于
+地址属于这个网段的访问目标生效。&lt;code class=&quot;highlighter-rouge&quot;&gt;dev veth11&lt;/code&gt;表示符合这条规则的数据，会从网络设备&lt;code class=&quot;highlighter-rouge&quot;&gt;veth11&lt;/code&gt;上
+发送。&lt;/p&gt;
+
+&lt;p&gt;所以，这条规则组合起来的意思就是，对于目标地址是&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24&lt;/code&gt;网段的数据，会通过网络设备
+&lt;code class=&quot;highlighter-rouge&quot;&gt;veth11&lt;/code&gt;发送。所以，当我们从Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;上执行ping Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns12&lt;/code&gt;的地址
+&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.12&lt;/code&gt;，ICMP数据包就会根据这条规则，从&lt;code class=&quot;highlighter-rouge&quot;&gt;veth11&lt;/code&gt;发送出去，通过Linux Bridge &lt;code class=&quot;highlighter-rouge&quot;&gt;br1&lt;/code&gt;，
+最终到达&lt;code class=&quot;highlighter-rouge&quot;&gt;ns12&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;然而，如果从&lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;上ping Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;ns21&lt;/code&gt;的地址&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.21&lt;/code&gt;，是没有可以匹配的路由规则
+的，这时，Linux系统就会将这些数据包丢弃，所以最终没有数据会从&lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;发送出来，对外表现为网络不
+通。&lt;/p&gt;
+
+&lt;p&gt;对于这种情况，除了查看所有的路由规则进行分析外，我们可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;ip route show to match&lt;/code&gt;命令，
+来查看目标地址属于特定网段网络的数据，会应用哪些路由规则。比如：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route show to match 10.120.1.0/24
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;这条命令会有如下输出：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;10.120.1.0/24 dev veth11  proto kernel  scope link  src 10.120.1.11
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;和我们上文中的分析相同，&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24 dev veth11&lt;/code&gt;这条规则会被应用。&lt;/p&gt;
+
+&lt;p&gt;而命令&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route show to match 10.120.2.0/24
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;的输出是空的，说明到&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;网段没有可用的路由规则。&lt;/p&gt;
+
+&lt;p&gt;为了连通不同网段下的Namespace，需要修改路由规则：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route add default dev veth11
+ip -n ns12 route add default dev veth12
+ip -n ns21 route add default dev veth21
+ip -n ns22 route add default dev veth22
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;add&lt;/code&gt;参数表示执行的是路由添加操作，后面是新的路由规则。&lt;code class=&quot;highlighter-rouge&quot;&gt;default&lt;/code&gt;表示没有其他规则可用时，默认
+匹配使用这条规则。&lt;code class=&quot;highlighter-rouge&quot;&gt;dev veth11&lt;/code&gt;表示匹配新规则的数据通过设备&lt;code class=&quot;highlighter-rouge&quot;&gt;veth11&lt;/code&gt;发送。所以新规则的意思就是
+在没有其他规则可用的情况下，默认使用网络设备&lt;code class=&quot;highlighter-rouge&quot;&gt;veth11&lt;/code&gt;发送数据。由于绝大部分的网络通信都需要通信
+双方都能够向对方发送数据，所以这里需要在所有的Namespace里添加默认的路由规则。&lt;/p&gt;
+
+&lt;p&gt;这时，我们再检测不同网段间的连通性&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip netns exec ns11 ping -c 5 10.120.2.21
+ip netns exec ns21 ping -c 5 10.120.1.11
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;就可以发现，不同网段间的Namespace可以互通了。&lt;/p&gt;
+
+&lt;p&gt;当然，我们在&lt;code class=&quot;highlighter-rouge&quot;&gt;ns11&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;ns12&lt;/code&gt;上也可以显式指定对于&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;网段的路由规则：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route add 10.120.2.0/24 dev veth11
+ip -n ns12 route add 10.120.2.0/24 dev veth12
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;在&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;网段的Namespace的路由规则正确的情况下，就算没有默认路由规则，这时它们之间
+也是可以互通的。&lt;/p&gt;
+
+&lt;p&gt;这种方式的限制就是每次有新的网段需要连通时，都需要在所有的相关Namespace添加路由规则。&lt;/p&gt;
+
+&lt;h2 id=&quot;清理实验资源-2&quot;&gt;清理实验资源&lt;/h2&gt;
+
+&lt;p&gt;在网络设备被删除时，和它相关的路由规则也会同时被自动删除，所以一般不需要手工删除。如果需要显式清
+理路由规则时，可以使用如下命令：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 route del 10.120.2.0/24 dev veth11
+ip -n ns11 route del default dev veth11
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;形式类似添加路由规则的命令。&lt;/p&gt;
+
+&lt;p&gt;实验的其他资源清理方式和之前是相同的：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 link del veth11
+ip -n ns12 link del veth12
+ip -n ns21 link del veth21
+ip -n ns22 link del veth22
+ip link del br1
+ip netns del ns11
+ip netns del ns12
+ip netns del ns21
+ip netns del ns22
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h1 id=&quot;模拟网关&quot;&gt;模拟网关&lt;/h1&gt;
+
+&lt;p&gt;前一节的例子中，通过修改默认路由，让Namespace默认将所有的数据都发送到Linux Bridge上，来实现
+不同网段的Namespace互通。这种方式下，无法通过集中的方式来对网段进行隔离。比如，如果我们只希望
+&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;互通，而与&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.3.0/24&lt;/code&gt;不通，必须在所有的Namespace
+上做修改。&lt;/p&gt;
+
+&lt;p&gt;为了解决这个问题，我们可以引入模拟网关的Namespace。结构如下图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/namespace-interconnecting-with-linux-bridge/linux_bridge_with_router.png&quot; alt=&quot;使用Namespace模拟网关&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;上图中，Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;上的VETH设备用来作为&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.1.0/24&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;10.120.2.0/24&lt;/code&gt;的网关，
+然后将各个Namespace的默认路由设置为自己所在网络的网关。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建Namespace、VETH和Bridge&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;这一步创建和上一节中相同的设备，相关的配置也一样。为接下来创建和配置模拟网关作准备：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns add ns11
+ ip netns add ns12
+ ip netns add ns21
+ ip netns add ns22
+ ip link add br1 type bridge
+ ip link set br1 up
+ ip link add veth11 type veth peer name br1-veth11
+ ip link add veth12 type veth peer name br1-veth12
+ ip link add veth21 type veth peer name br1-veth21
+ ip link add veth22 type veth peer name br1-veth22
+ ip link set veth11 netns ns11
+ ip link set veth12 netns ns12
+ ip link set veth21 netns ns21
+ ip link set veth22 netns ns22
+ ip -n ns11 address add 10.120.1.11/24 dev veth11
+ ip -n ns12 address add 10.120.1.12/24 dev veth12
+ ip -n ns21 address add 10.120.2.21/24 dev veth21
+ ip -n ns22 address add 10.120.2.22/24 dev veth22
+ ip -n ns11 link set veth11 up
+ ip -n ns12 link set veth12 up
+ ip -n ns21 link set veth21 up
+ ip -n ns22 link set veth22 up
+ ip link set br1-veth11 master br1
+ ip link set br1-veth12 master br1
+ ip link set br1-veth21 master br1
+ ip link set br1-veth22 master br1
+ ip link set br1-veth11 up
+ ip link set br1-veth12 up
+ ip link set br1-veth21 up
+ ip link set br1-veth22 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;创建模拟网关Namespace和VETH设备&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns add nsgw
+ ip link add vethgw1 type veth peer name br1-vethgw1
+ ip link add vethgw2 type veth peer name br1-vethgw2
+ ip link set br1-vethgw1 master br1
+ ip link set br1-vethgw2 master br1
+ ip link set br1-vethgw1 up
+ ip link set br1-vethgw2 up
+ ip link set vethgw1 netns nsgw
+ ip link set vethgw2 netns nsgw
+ ip -n nsgw address add 10.120.1.1/24 dev vethgw1
+ ip -n nsgw address add 10.120.2.1/24 dev vethgw2
+ ip -n nsgw link set vethgw1 up
+ ip -n nsgw link set vethgw2 up
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;Namespace &lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;就有了两个VETH设备来充当网关，这两个VETH设备也都连接到了Bridge上。这
+ 时，各个Namespace都可以和所在网络的“网关”连通了：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns11 ping -c 5 10.120.1.1
+ ip netns exec ns12 ping -c 5 10.120.1.1
+ ip netns exec ns21 ping -c 5 10.120.2.1
+ ip netns exec ns22 ping -c 5 10.120.2.1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;修改Namespace的默认路由规则&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;为了让发往其他网段的数据能够首先到达网关，我们需要在所有的Namespace添加默认路由规则：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip -n ns11 route add default via 10.120.1.1
+ ip -n ns12 route add default via 10.120.1.1
+ ip -n ns21 route add default via 10.120.2.1
+ ip -n ns22 route add default via 10.120.2.1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;现在，所有的Namespace都已经可以和对方网段的网关连通了：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns11 ping -c 5 10.120.2.1
+ ip netns exec ns12 ping -c 5 10.120.2.1
+ ip netns exec ns21 ping -c 5 10.120.1.1
+ ip netns exec ns22 ping -c 5 10.120.1.1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;然而，此时不同网段的Namespace之间仍然是不通的。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;在网关Namespace上开启网络转发&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;现在所有的Namespce的数据默认都会发送到网关&lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;上，然而&lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;在收到一个不属于自己VETH
+ 设备地址的数据时，认为不是发送给自己的，然后丢弃了，所以此时不同网段时的Namespace仍然不能
+ 互通。&lt;/p&gt;
+
+    &lt;p&gt;这时，我们需要开启&lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;上的网络转发功能，让它在收到不属于自己设备地址的数据时，会根据目的
+ 地址进行转发。&lt;/p&gt;
+
+    &lt;p&gt;首先，我们可以通过以下命令查看&lt;code class=&quot;highlighter-rouge&quot;&gt;nsgw&lt;/code&gt;与网络转发相关的内核设置：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec nsgw sysctl net.ipv4.ip_forward 
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;命令会有如下返回值：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; net.ipv4.ip_forward = 0
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;表示这IPv4的IP转发是关闭的。接下来执行以下命令来开启这个功能：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec nsgw sysctl -w net.ipv4.ip_forward=1
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+
+    &lt;p&gt;这里的&lt;code class=&quot;highlighter-rouge&quot;&gt;sysctl&lt;/code&gt;是一个Linux内核参数管理工具。&lt;code class=&quot;highlighter-rouge&quot;&gt;net.ipv4.ip_forward&lt;/code&gt;则是一个内核参数的名
+ 字。可以通过&lt;code class=&quot;highlighter-rouge&quot;&gt;sysctl -all&lt;/code&gt;命令来查看所有的内核参数，也可以通过
+ &lt;code class=&quot;highlighter-rouge&quot;&gt;sysctl -a -r &quot;&amp;lt;pattern&amp;gt;&quot;&lt;/code&gt;来搜索名字符合指定pattern的参数。 &lt;code class=&quot;highlighter-rouge&quot;&gt;-w&lt;/code&gt;参数则会根据后面的参
+ 数修改参数值。&lt;/p&gt;
+
+    &lt;p&gt;现在我们就可以从一个网段的Namespace向不同网段的Namespace进行通信了：&lt;/p&gt;
+
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ip netns exec ns11 ping -c 5 10.120.2.21
+ ip netns exec ns21 ping -c 5 10.120.1.11
+&lt;/code&gt;&lt;/pre&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;使用这种方案，“网关”在不同Namespace下的网络之间，是不能互通。但是，由于Linux Bridge本身工作
+在2层，而且不会对其上的网络进行任何隔离，所以仍然可以修改对个别Namespace的路由规则来绕过这种访
+问限制。另外，由于同样的原因，同一个Linux Bridge上的所有的设备的IP地址都必须是唯一的。&lt;/p&gt;
+
+&lt;h2 id=&quot;清理实验资源-3&quot;&gt;清理实验资源&lt;/h2&gt;
+
+&lt;p&gt;实验的其他资源清理方式和之前是相同的：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ip -n ns11 link del veth11
+ip -n ns12 link del veth12
+ip -n ns21 link del veth21
+ip -n ns22 link del veth22
+ip -n nsgw link del vethgw1
+ip -n nsgw link del vethgw2
+ip link del br1
+ip netns del ns11
+ip netns del ns12
+ip netns del ns21
+ip netns del ns22
+ip netns del nsgw
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h1 id=&quot;小结&quot;&gt;小结&lt;/h1&gt;
+
+&lt;p&gt;本文介绍了在Linux上使用虚拟网络设备Linux Bridge和VETH来搭建虚拟网络的一些基本方式，以及由于
+Linux Bridge自身原理产生的一些限制。同时，也简单介绍了路由规则对于网络通信的影响。最后，为了
+模拟一个基本的网关，还接触到了Linux中关于网络的内核参数。&lt;/p&gt;
+
+&lt;p&gt;Linux Bridge相关的概念和操作可以参考以下一些文档：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://wiki.linuxfoundation.org/networking/bridge&quot;&gt;Bridge setup on Linux Foundation&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://fedoraproject.org/wiki/Networking/Bridging&quot;&gt;Bridging on Fedora Proejct&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;对于vTAP、VETH设备，以及它们和Linux Bridge之间的关系，可以参考以下一些文档：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.ibm.com/developerworks/cn/linux/1310_xiawc_networkdevice/&quot;&gt;Linux 上的基础网络设备详解&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://openvz.org/Virtual_Ethernet_device&quot;&gt;Virtual Ethernet device&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;这两篇文章对于本文有非常大的启发：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.opencloudblog.com/?p=66&quot;&gt;Linux Switching – Interconnecting Namespaces&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://linux-blog.anracom.com/2016/02/02/fun-with-veth-devices-linux-virtual-bridges-kvm-vmware-attach-the-host-and-connect-bridges-via-veth/&quot;&gt;Fun with veth devices, Linux virtual bridges, KVM, VMware – attach the host and connect bridges via veth&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;本文中，主要使用iproute2工具来对网络设备进行操作。关于这个工具，一个比较完整的文档是：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://baturin.org/docs/iproute2/&quot;&gt;Baturin’s iproute2 Doc&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;brctl&lt;/code&gt;是一个用来专门对Linux Bridge进行管理和操作的工具。它的使用非常广泛，文档众多，使用方法
+和iproute2的相关命令很类似。本文不再展示具体例子，以及文档链接。&lt;/p&gt;</content><author><name></name></author><summary type="html">概览</summary></entry><entry><title type="html">创业和创新</title><link href="/startup/innovation/2017/04/25/startup-and-innovation.html" rel="alternate" type="text/html" title="创业和创新" /><published>2017-04-25T21:55:36+08:00</published><updated>2017-04-25T21:55:36+08:00</updated><id>/startup/innovation/2017/04/25/startup-and-innovation</id><content type="html" xml:base="/startup/innovation/2017/04/25/startup-and-innovation.html">&lt;p&gt;昨天看了一篇文章&lt;a href=&quot;http://36kr.com/p/5072028.html&quot;&gt;&lt;em&gt;一位投资人，用4小时讲了一个”用技术创业干掉大企业并改变世界”的故事&lt;/em&gt;&lt;/a&gt;，
 最近也在思考自身今后事业发展的一些问题，于是借这个机会把一些想法做一个总结和整理。&lt;/p&gt;
 
 &lt;h1 id=&quot;关于创业&quot;&gt;关于创业&lt;/h1&gt;
