@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>在Linux上使用VLan</title>
+  <meta name="description" content="概览">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="canonical" href="/network/2017/05/22/vlan-in-linux.html">
+  <link rel="alternate" type="application/rss+xml" title="不写日记" href="/feed.xml">
+  
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">不写日记</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+            <a class="page-link" href="/about/">About</a>
+            
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">在Linux上使用VLan</h1>
+    <p class="post-meta">
+      <time datetime="2017-05-22T18:14:07+08:00" itemprop="datePublished">
+        
+        May 22, 2017
+      </time>
+      </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h1 id="概览">概览</h1>
+
+<p>在<a href="/network/2017/05/07/namespace-interconnecting-with-linux-bridge.html">Namespace网络互联-使用Linux Bridge</a>
+中，不同网段之间的隔离是通过各个Namespace自身的路由规则来实现的。这种方式很容易在Namespace上
+通过修改路由规则绕过。这里介绍通过VLan的方式来在2层对网络进行划分和隔离。</p>
+
+<p>本文只会演示在同一Linux系统下，使用虚拟网络设备和Linux Bridge的VLan使用。在实际场景里，我们
+都需要在交换机上进行VLan的配置，不过基本原理是类似的，本文就不再讨论交换机的内容。</p>
+
+<p><strong>本文示例环境是CentOS 7</strong></p>
+
+<h2 id="vlan">VLan</h2>
+
+<p>VLan可以在同一个物理网络上划分多个网络，这些网络之间在二层是隔离的。通过VLan，就可以更加灵活和
+高效的使用物理网络设备。</p>
+
+<p>不同VLan是通过VLan ID来区分来自于不同VLan的数据包的。VLan ID被加在标准的以太帧中，被称为
+tag。</p>
+
+<p>通常，VLan是配置在交换机上的。交换机的每一个端口可以配置一个VLan ID。通过端口的上行数据包会加
+上VLan tag，而下行数据包则会去除tag。如果下行数据包上的tag和端口上的VLan ID不一致，会被丢弃。</p>
+
+<p>本文中使用Linux Bridge作为虚拟的交换机。相应的，使用Linux中的虚拟VLan设备作为交换机的端口。</p>
+
+<h1 id="通过vlan连接两个namespace">通过VLan连接两个Namespace</h1>
+
+<p>我们还是从最基本的例子开始，通过Veth直接连接两个Namespace。当然，因为这种方式只能连接两个
+Namespace，实际应用中在这种情况下并没有必要进行VLan划分。</p>
+
+<p>在Linux系统里，需要在一个现有的网络设备上创建一个新的VLan设备，来进行VLan的配置。这个设备的主
+要作用就是对上行的数据包加上VLan tag，对下行的数据包拆除VLan tag。这里，VLan设备的上联设备
+就是一对Veth设备中的一个。</p>
+
+<h2 id="在namespace内部设置vlan">在Namespace内部设置VLan</h2>
+
+<p>第一个例子是将Veth添加到Namespace中，然后在Namespace里配置VLan设备：</p>
+
+<p><img src="/assets/img/vlan-in-linux/veth_peer.png" alt="使用Veth对连Namespace，在Namespace内部配置VLan" /></p>
+
+<p>首先，创建并配置好图中的Namespace和Veth设备：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns add ns1
+ip netns add ns2
+
+ip link add veth1 type veth peer name veth2
+ip link set veth1 netns ns1
+ip link set veth2 netns ns2
+
+ip -n ns1 link set veth1 up
+ip -n ns2 link set veth2 up
+</code></pre>
+</div>
+
+<p>接下来，在Namesapce中创建VLan设备：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns1 link add veth1.100 link veth1 type vlan id 100
+ip -n ns2 link add veth2.100 link veth2 type vlan id 100
+</code></pre>
+</div>
+
+<p>因为VLan也是一种虚拟网络设备，所以同样使用<code class="highlighter-rouge">ip link add</code>来创建。<code class="highlighter-rouge">veth1.100</code>和<code class="highlighter-rouge">veth2.100</code>
+是VLan设备的名字。<code class="highlighter-rouge">link</code>参数后面是VLan的上联设备，这里分别是Veth设备<code class="highlighter-rouge">veth1</code>和<code class="highlighter-rouge">veth2</code>。
+<code class="highlighter-rouge">type vlan</code>表明创建的是VLan设备。<code class="highlighter-rouge">id</code>后面是VLan ID，这里是<code class="highlighter-rouge">100</code>。</p>
+
+<p>和其他网络设备一样，为了使用新创建的VLan设备，需要给它们分配IP地址并启用：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns1 address add 10.120.1.11/24 dev veth1.100
+ip -n ns1 link set veth1.100 up
+ip -n ns2 address add 10.120.1.12/24 dev veth2.100
+ip -n ns2 link set veth2.100 up
+</code></pre>
+</div>
+
+<p>现在，两个Namespace就可以通过VLan进行通信了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 ping -c 5 10.120.1.12
+</code></pre>
+</div>
+
+<h3 id="验证">验证</h3>
+
+<p>为了验证VLan设置是否生效，可以使用<code class="highlighter-rouge">tcpdump</code>来抓取和分析数据包的内容。</p>
+
+<p>如果没有<code class="highlighter-rouge">tcpdump</code>工具，对于CentOS系统，可以使用<code class="highlighter-rouge">yum</code>进行安装：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>yum install -y tcpdump
+</code></pre>
+</div>
+
+<p>在其中一个Namespace上持续ping另一个Namespace：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 ping 10.120.1.12 &gt; /dev/null &amp;
+</code></pre>
+</div>
+
+<p>然后在Namespace中使用<code class="highlighter-rouge">tcpdump</code>：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 tcpdump -e -i veth1
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">tcpdump</code>的第一个参数<code class="highlighter-rouge">-e</code>表示在输出中显示链路层的包头信息。因为VLan Tag是作用在2层的，所以
+需要此参数来显示VLan ID。<code class="highlighter-rouge">-i veth1</code>表示在网络设备<code class="highlighter-rouge">veth1</code>上抓取所有数据包。因为VLan设备
+<code class="highlighter-rouge">veth1.100</code>会进行VLan Tag的封装和拆除，所以在VLan设备上抓取的包是看不到VLan ID的，而需要在
+VLan设备的上联设备上进行抓包。</p>
+
+<p>此时，<code class="highlighter-rouge">tcpdump</code>会输出如下的抓包信息：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>17:48:38.427545 66:65:9c:85:35:70 (oui Unknown) &gt; 56:b2:66:25:20:3f (oui Unknown), ethertype 802.1Q (0x8100), length 102: vlan 100, p 0, ethertype IPv4, host-192-168-0-60 &gt; 10.120.1.12: ICMP echo request, id 27371, seq 12, length 64
+</code></pre>
+</div>
+
+<p>其中，<code class="highlighter-rouge">vlan 100</code>就是指此数据包上的VLan ID是100。</p>
+
+<h2 id="直接使用veth">直接使用Veth</h2>
+
+<p>在当前这个例子中，Veth设备是直接分配给Namespace里的，虽然Namespace里在Veth设备上添加了
+VLan，但实际上这些Veth设备仍然是可以直接使用的。</p>
+
+<p>在给Veth设备分配IP地址后：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns1 address add 192.168.100.11/24 dev veth1
+ip -n ns2 address add 192.168.100.12/24 dev veth2
+</code></pre>
+</div>
+
+<p>就可以直接使用Veth设备进行通信了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns1 ping -c 5 192.168.100.12
+</code></pre>
+</div>
+
+<h2 id="在namespace之外设置vlan">在Namespace之外设置VLan</h2>
+
+<p>在上一个例子中，Veth设备被直接分配给Namespace，然后在Namespace中配置VLan。这么做的问题就是
+在Namespace中Veth设备仍然可以直接使用，原本希望通过VLan来实现的网络隔离就会不可靠。另外，在
+Namespace内部分别配置VLan，不利于网络配置的集中管理。</p>
+
+<p>接下来，我们对这一方案进行改进，在Namespace之外创建配置好VLan设备，然后让Namespace直接使用
+VLan设备。结构如下图：</p>
+
+<p><img src="/assets/img/vlan-in-linux/veth_peer_vlan_out_namespace.png" alt="使用Veth对连Namespace，在Namespace外部配置VLan" /></p>
+
+<p>首先，创建图中的Namespace和Veth设备：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns add ns1
+ip netns add ns2
+
+ip link add veth1 type veth peer name veth2
+
+ip link set veth1 up
+ip link set veth2 up
+</code></pre>
+</div>
+
+<p>接下来，直接创建VLan设备并将VLan设备分配给Namespace：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add veth1.100 link veth1 type vlan id 100
+ip link add veth2.100 link veth2 type vlan id 100
+
+ip link set veth1.100 netns ns1
+ip link set veth2.100 netns ns2
+</code></pre>
+</div>
+
+<p>在Namespace中给VLan设备分配IP地址并启用：
+    ip -n ns1 address add 10.120.1.11/24 dev veth1.100
+    ip -n ns2 address add 10.120.1.12/24 dev veth2.100
+    ip -n ns1 link set veth1.100 up
+    ip -n ns2 link set veth2.100 up</p>
+
+<p>此时，Namespace之间就可以互通了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 ping -c 5 10.120.1.12
+</code></pre>
+</div>
+
+<p>在这种情况下，Namespace中只有VLan设备可用，所以所有的数据包都会通过VLan进行隔离。后面所有的
+例子都会采用这种方式。</p>
+
+<h1 id="在linux-bridge上使用vlan">在Linux Bridge上使用VLan</h1>
+
+<p>接下来，我们在Linux Bridge使用VLan来对多个Namespace的网络进行划分和隔离。</p>
+
+<h2 id="相同网段的两个vlan">相同网段的两个VLan</h2>
+
+<p>连接在同一个linux Bridge上的网络设备默认二层是互通的，所以在默认的路由设置下，同一个网段的多个
+网络设备是互通的。这里，我们为了演示VLan的隔离性，将多个Namespace连接到同一个Linux Bridge
+上，并将它们设置为同一个网段，但分属两个不同的VLan：</p>
+
+<p><img src="/assets/img/vlan-in-linux/linux_bridge_with_vlan.png" alt="同一个Linux Bridge上同一网段的两个VLan" /></p>
+
+<p>创建并启用Linux Bridge:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add br1 type bridge
+ip link set br1 up
+</code></pre>
+</div>
+
+<p>创建Veth设备对:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add veth1 type veth peer name br1-veth1
+ip link add veth2 type veth peer name br1-veth2
+ip link add veth3 type veth peer name br1-veth3
+ip link add veth4 type veth peer name br1-veth4
+</code></pre>
+</div>
+
+<p>将Veth设备对中的一端连接到Linux Bridge:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set br1-veth1 master br1
+ip link set br1-veth2 master br1
+ip link set br1-veth3 master br1
+ip link set br1-veth4 master br1
+
+ip link set br1-veth1 up
+ip link set br1-veth2 up
+ip link set br1-veth3 up
+ip link set br1-veth4 up
+</code></pre>
+</div>
+
+<p>使用Veth设备对中的另一端作为VLan设备的上联设备:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add veth1.100 link veth1 type vlan id 100
+ip link add veth2.100 link veth2 type vlan id 100
+ip link add veth3.200 link veth3 type vlan id 200
+ip link add veth4.200 link veth4 type vlan id 200
+
+ip link set veth1 up
+ip link set veth2 up
+ip link set veth3 up
+ip link set veth4 up
+</code></pre>
+</div>
+
+<p>创建Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns add ns1
+ip netns add ns2
+ip netns add ns3
+ip netns add ns4
+</code></pre>
+</div>
+
+<p>将VLan设备分配给对应的Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set veth1.100 netns ns1
+ip link set veth2.100 netns ns2
+ip link set veth3.200 netns ns3
+ip link set veth4.200 netns ns4
+</code></pre>
+</div>
+
+<p>在Namespace中给VLan设备分配IP地址，并启用:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns1 address add 10.120.1.11/24 dev veth1.100
+ip -n ns2 address add 10.120.1.12/24 dev veth2.100
+ip -n ns3 address add 10.120.1.13/24 dev veth3.200
+ip -n ns4 address add 10.120.1.14/24 dev veth4.200
+
+ip -n ns1 link set veth1.100 up
+ip -n ns2 link set veth2.100 up
+ip -n ns3 link set veth3.200 up
+ip -n ns4 link set veth4.200 up
+</code></pre>
+</div>
+
+<p>此时，同一个VLan中的Namespace是互通的:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 ping -c 5 10.120.1.12
+ip netns exec ns3 ping -c 5 10.120.1.14
+</code></pre>
+</div>
+
+<p>而不同VLan中的Namespace是不通的，虽然它们同属于<code class="highlighter-rouge">10.120.1.0/24</code>网段，并且不需要在
+Namespace作任何额外的配置:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns1 ping -c 5 10.120.1.13
+ip netns exec ns3 ping -c 5 10.120.1.12
+</code></pre>
+</div>
+
+<p>通过VLan，就可以很好的将连接在同一个Linux Bridge上的网络设备进行很好的进行隔离。</p>
+
+<h2 id="模拟网关">模拟网关</h2>
+
+<p>因为VLan会在二层进行隔离，所以如果需要将同一个Linux Bridge上的两个VLan打通，就需要一个模拟的
+网关：</p>
+
+<p><img src="/assets/img/vlan-in-linux/linux_bridge_with_vlan.png" alt="同一个Linux Bridge上两个VLan之间通过模拟网关互通" /></p>
+
+<p>创建并启用Linux Bridge:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add br1 type bridge
+ip link set br1 up
+</code></pre>
+</div>
+
+<p>创建连接Namespace和Linux Bridge所需要的Veth设备:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add veth11 type veth peer name br1-veth11
+ip link add veth12 type veth peer name br1-veth12
+ip link add veth21 type veth peer name br1-veth21
+ip link add veth22 type veth peer name br1-veth22
+</code></pre>
+</div>
+
+<p>连接Veth设备对的一端到Linux Bridge:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set br1-veth11 master br1
+ip link set br1-veth12 master br1
+ip link set br1-veth21 master br1
+ip link set br1-veth22 master br1
+
+ip link set br1-veth11 up
+ip link set br1-veth12 up
+ip link set br1-veth21 up
+ip link set br1-veth22 up
+</code></pre>
+</div>
+
+<p>在Veth设备对的另一端上创建VLan设备:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add veth11.100 link veth11 type vlan id 100
+ip link add veth12.100 link veth12 type vlan id 100
+ip link add veth21.200 link veth21 type vlan id 200
+ip link add veth22.200 link veth22 type vlan id 200
+
+ip link set veth11 up
+ip link set veth12 up
+ip link set veth21 up
+ip link set veth22 up
+</code></pre>
+</div>
+
+<p>创建所需的Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns add ns11
+ip netns add ns12
+ip netns add ns21
+ip netns add ns22
+</code></pre>
+</div>
+
+<p>将VLan设备分配给对应的Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set veth11.100 netns ns11
+ip link set veth12.100 netns ns12
+ip link set veth21.200 netns ns21
+ip link set veth22.200 netns ns22
+</code></pre>
+</div>
+
+<p>在Namespace中给VLan设备分配IP地址并启用:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n ns11 address add 10.120.1.11/24 dev veth11.100
+ip -n ns12 address add 10.120.1.12/24 dev veth12.100
+ip -n ns21 address add 10.120.2.21/24 dev veth21.200
+ip -n ns22 address add 10.120.2.22/24 dev veth22.200
+
+ip -n ns11 link set veth11.100 up
+ip -n ns12 link set veth12.100 up
+ip -n ns21 link set veth21.200 up
+ip -n ns22 link set veth22.200 up
+</code></pre>
+</div>
+
+<p>如上一节所描述的一样，现在两个VLan之间是隔离的，网络无法互通。接下来，创建一个Namespace作为两
+个VLan的网关。</p>
+
+<p>创建用来模拟网关的Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns add nsgw
+</code></pre>
+</div>
+
+<p>因为网关需要同时和两个VLan连接，所以需要两个Veth设备对:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add vethgw1 type veth peer name br1-vethgw1
+ip link add vethgw2 type veth peer name br1-vethgw2
+</code></pre>
+</div>
+
+<p>将Veth设备的一端连接到Linux Bridge:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set br1-vethgw1 master br1
+ip link set br1-vethgw2 master br1
+
+ip link set br1-vethgw1 up
+ip link set br1-vethgw2 up
+</code></pre>
+</div>
+
+<p>在Veth设备的另一端配置VLan:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link add vethgw1.100 link vethgw1 type vlan id 100
+ip link add vethgw2.200 link vethgw2 type vlan id 200
+
+ip link set vethgw1 up
+ip link set vethgw2 up
+</code></pre>
+</div>
+
+<p>将两个VLan设备都分配给网关Namespace:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip link set vethgw1.100 netns nsgw
+ip link set vethgw2.200 netns nsgw
+</code></pre>
+</div>
+
+<p>在网关Namespace中将VLan设备配置为各自VLan的网关:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip -n nsgw address add 10.120.1.1/24 dev vethgw1.100
+ip -n nsgw address add 10.120.2.1/24 dev vethgw2.200
+
+ip -n nsgw link set vethgw1.100 up
+ip -n nsgw link set vethgw2.200 up
+
+ip -n ns11 route add default via 10.120.1.1 
+ip -n ns12 route add default via 10.120.1.1 
+ip -n ns21 route add default via 10.120.2.1 
+ip -n ns22 route add default via 10.120.2.1 
+</code></pre>
+</div>
+
+<p>在Namespace中开启IPv4网络转发:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec nsgw sysctl -w net.ipv4.ip_forward=1
+</code></pre>
+</div>
+
+<p>现在，两个VLan之间就可以互通了:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>ip netns exec ns11 ping -c 5 10.120.2.21
+</code></pre>
+</div>
+
+<h1 id="小结">小结</h1>
+
+<p>本文介绍了VLan的基本概念和在虚拟网络设备上的用法。通常VLan是在物理交换机上进行配置的，不过不影
+响通过虚拟网络设备来理解VLan的基本概念和特性。</p>
+
+<p>对于VLan概念和使用，可以参考:</p>
+
+<ul>
+  <li><a href="http://www.linuxjournal.com/article/10821">VLAN Support in Linux</a></li>
+  <li><a href="http://blog.csdn.net/dog250/article/details/7354590">Linux实现的IEEE 802.1Q VLAN</a></li>
+</ul>
+
+<p>本文主要是使用iproute2来对虚拟VLan ID来操作的。对于iproute2的使用，可以参考:</p>
+
+<ul>
+  <li><a href="http://baturin.org/docs/iproute2/">Baturin’s iproute2 Doc</a></li>
+</ul>
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">不写日记</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>
+            
+              不写日记
+            
+            </li>
+            
+            <li><a href="mailto:arthur.liqian@gmail.com">arthur.liqian@gmail.com</a></li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/arthur-liqian"><span class="icon icon--github"><svg viewBox="0 0 16 16" width="16px" height="16px"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">arthur-liqian</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>还没想好
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
